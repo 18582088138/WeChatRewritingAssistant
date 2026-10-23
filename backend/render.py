@@ -105,7 +105,11 @@ def font(size):
 def wrap(draw, text, face, max_width):
     lines, line = [], ""
     for char in text:
-        if char == "\n" or draw.textlength(line + char, font=face) > max_width:
+        measured = 0 if char == "\n" else draw.textlength(line + char, font=face)
+        closing = char in "，。！？；：、,.!?;:）】》”’%"
+        if char != "\n" and closing and line and measured <= max_width + face.size:
+            line += char
+        elif char == "\n" or measured > max_width:
             lines.append(line)
             line = "" if char == "\n" else char
         else:

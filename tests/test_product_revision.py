@@ -153,3 +153,12 @@ def test_wechat_local_video_rejected_before_remote_call(monkeypatch):
     a=dict(id='a'*32,assets=[],body='[视频：演示](/api/articles/'+'a'*32+'/assets/demo/file)')
     with pytest.raises(ValueError,match='本地视频上传'):
         wechat_draft(a,dict(wechat=dict(thumb_media_id='existing-cover')))
+
+
+def test_card_wrap_keeps_closing_punctuation_on_previous_line():
+    from backend.render import font, wrap
+    from PIL import ImageDraw
+    draw=ImageDraw.Draw(Image.new('RGB',(600,300)))
+    text='技术条件，值得核对。'
+    lines=wrap(draw,text,font(30),130)
+    assert ''.join(lines)==text and all(not line.startswith(('，','。')) for line in lines)
