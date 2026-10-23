@@ -1,5 +1,6 @@
 """Browser integration check with a real previously generated draft; no extra model calls."""
 import json
+import shutil
 import sys
 from pathlib import Path
 
@@ -23,7 +24,7 @@ with sync_playwright() as p:
     errors = []
     page.on('pageerror', lambda err: errors.append(str(err)))
     page.goto('http://127.0.0.1:8000', wait_until='networkidle')
-    page.locator(f'[data-article="{draft["id"]}"]').click()
+    page.locator(f'article[data-article="{draft["id"]}"]').click()
     page.locator('#draft-body').wait_for()
     original = page.locator('#draft-title').input_value()
     page.locator('#draft-title').fill(original + ' · 人工编辑')
@@ -47,10 +48,10 @@ with sync_playwright() as p:
     assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth')
     page.screenshot(path=str(ROOT / 'test-results' / 'mobile-editor.png'), full_page=True)
     assert not errors, errors
-    # Keep the useful real sample but remove the test edit from its title.
-    current = store.read(draft['id'])
-    current['title'] = original
-    store.save(current)
+    # Remove only this run's newly created fixture; existing user articles remain intact.
+    fixture = store.folder(draft['id']).resolve()
+    assert fixture.parent == (store.DATA / 'articles').resolve()
+    shutil.rmtree(fixture)
     print(json.dumps({'editor_save': 'passed', 'preview': 'passed', 'versions': 'passed',
                       'cards': 'passed', 'download': 'passed', 'mobile': 'passed', 'errors': errors}))
     browser.close()

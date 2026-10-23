@@ -20,7 +20,7 @@ with sync_playwright() as p:
     page.get_by_role('button', name='查看界面示例').click()
     assert page.locator('.article-card').count() == 3
     page.screenshot(path=str(OUTPUT / 'desktop.png'), full_page=True)
-    page.get_by_role('button', name='处理中', exact=False).click()
+    page.locator('.tabs').get_by_role('button', name='处理中', exact=False).click()
     assert page.locator('.article-card').count() == 1
     page.get_by_role('button', name='退出示例').click()
     page.get_by_role('button', name='设置与连接').click()

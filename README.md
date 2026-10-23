@@ -2,6 +2,8 @@
 
 一个本地优先的中文科技内容工作台：从文章或论文链接出发，研究多个来源，生成原创解读，独立审稿，编辑图文并准备各平台草稿。
 
+GUI 已按 [taste-skill](https://github.com/leonxlnx/taste-skill) 的应用界面规范优化，使用 Editorial greeting / Open plane 方向。具体设计取舍、检查结果与截图自评见 [GUI 优化记录](docs/gui-design.md)。支持文章、设置与单篇编辑的 hash 入口，刷新后恢复当前页面。
+
 ## 启动
 
 ```powershell
