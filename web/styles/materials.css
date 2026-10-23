@@ -160,3 +160,12 @@
   color: var(--muted);
   font-size: 12px;
 }
+.source-full-text {
+  max-height: 480px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.7;
+}

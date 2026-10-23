@@ -1,0 +1,24 @@
+{
+  "articles": [
+    {"name":"anthropic_sonnet","url":"https://www.anthropic.com/news/claude-sonnet-4-5","anchors":["Claude Sonnet 4.5","SWE-bench","Footnotes"],"min_chars":10000,"min_images":8,"min_embeds":2},
+    {"name":"deepseek_notice","url":"https://api-docs.deepseek.com/news/news250922","anchors":["Terminus","improved"],"min_chars":500,"min_images":1},
+    {"name":"qwen3","url":"https://qwenlm.github.io/blog/qwen3/","anchors":["Qwen3","Future Work"],"min_chars":12000,"min_images":7,"min_videos":1},
+    {"name":"qwen_video","url":"https://qwenlm.github.io/blog/qwen2.5-vl/","anchors":["Qwen2.5","What’s Next"],"min_chars":25000,"min_images":12,"min_videos":10,"min_saved_videos":1},
+    {"name":"deepseek_pdf","url":"https://arxiv.org/pdf/2412.19437","anchors":["DeepSeek-V3","expert load"],"min_chars":150000,"min_images":8,"min_pages":53},
+    {"name":"deepseek_html","url":"https://arxiv.org/html/2412.19437v2","anchors":["DeepSeek-V3","expert load"],"min_chars":100000,"min_images":12},
+    {"name":"qwen_abs","url":"https://arxiv.org/abs/2505.09388","anchors":["Qwen3","References"],"min_chars":80000,"min_images":2},
+    {"name":"nvidia_recent_hardware","url":"https://developer.nvidia.com/blog/running-frontier-class-ai-models-across-8-nvidia-dgx-spark-nodes/","anchors":["DGX Spark","Switchyard"],"min_chars":8000,"min_images":1},
+    {"name":"nvidia_recent_agents","url":"https://developer.nvidia.com/blog/inside-nvidia-sentry-secure-ai-agents-at-runtime/","anchors":["Sentry"],"min_chars":2500,"min_images":1},
+    {"name":"hf_official","url":"https://huggingface.co/blog/smolvla","anchors":["SmolVLA","Conclusion"],"min_chars":15000,"expected_limitation":"当前网络 TLS/代理访问不稳定，失败必须记录"},
+    {"name":"hf_mirror","url":"https://hf-mirror.com/blog/smolvla","anchors":["SmolVLA","Conclusion"],"min_chars":15000,"expected_limitation":"镜像正文可访问，但镜像图片域名不保证可达"},
+    {"name":"openai_access","url":"https://openai.com/index/introducing-gpt-5/","anchors":["GPT-5"],"min_chars":3000,"expected_limitation":"此前返回 HTTP 403，不绕过访问限制"}
+  ],
+  "searches": [
+    {"query":"Qwen3 technical report","expected_url":"arxiv.org/","forbidden_title":"Qwen3 .8"},
+    {"query":"Claude Sonnet 4.5 announcement benchmarks","expected_url":"anthropic.com/news/claude-sonnet-4-5"},
+    {"query":"DeepSeek V3.1 Terminus","expected_url":"api-docs.deepseek.com/news/news250922"},
+    {"query":"NVIDIA Isaac GR00T N1 humanoid robots","expected_url":"arxiv.org/abs/2503.14734"},
+    {"query":"具身智能 SmolVLA","expected_url":"arxiv.org/abs/2506.01844"},
+    {"query":"NVIDIA DGX Spark nodes","expected_url":"nvidia.com/blog/"}
+  ]
+}

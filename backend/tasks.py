@@ -5,6 +5,7 @@ import threading
 from fastapi import HTTPException
 
 from . import store
+from .research_quality import failure_reason
 from .workflow import ingest, run
 
 BUSY = set()
@@ -43,9 +44,7 @@ def background_job(article_id, options=None, fetch_only=False, review_only=False
                 article.update(
                     status="New",
                     stage="抓取失败",
-                    error=str(exc)[:300]
-                    if isinstance(exc, ValueError)
-                    else "抓取失败，请检查网络或粘贴原文",
+                    error=failure_reason(exc),
                 )
                 store.save(article)
         else:

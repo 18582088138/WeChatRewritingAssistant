@@ -7,11 +7,13 @@ backend/
   app.py                 应用工厂、生命周期、CORS、路由注册
   schemas.py             请求结构与输入约束
   dependencies.py        访问令牌与文章读取依赖
-  routes/                articles / generation / assets / preview / settings / delivery
+  routes/                articles / generation / assets / preview / settings / delivery / research
   tasks.py               文章任务互斥、后台执行与重启恢复
   workflow.py            抓取、写作与审稿流程编排
   agents.py              写作 Agent、审稿 Agent 与模型请求
-  research.py, network.py 来源研究、抓取与网络约束
+  research.py            来源提取入口，search/download 的稳定调用接口
+  research_*.py          HTML/PDF、媒体发现、下载、搜索、官方索引、质量与模型上下文
+  network.py             网络约束与有界下载
   materials.py, render.py 素材、排版、组图和导出
   publishing.py           平台草稿投递
   store.py               文章、素材与历史版本文件存储

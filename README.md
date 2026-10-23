@@ -72,6 +72,8 @@ Pages 只能托管静态前端，不能运行 Python、保存服务器文件或�
 
 ## 验证
 
+搜索与抓取已进行多轮真实图文、视频和论文验证，结果、访问限制与自定义链接复测方式见 [真实搜索与抓取验证](docs/research-validation.md)。
+
 ```powershell
 conda run -n xkd_env_py312 python -m pytest -q
 ```

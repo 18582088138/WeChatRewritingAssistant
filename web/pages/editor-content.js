@@ -1,5 +1,5 @@
 import { icon } from '../icons.js';
-import { $, $$, escape, date, safeUrl, toast } from '../core/dom.js';
+import { $, $$, escape, date, toast } from '../core/dom.js';
 import { api } from '../core/api.js';
 import { hydrateImages, hydratePreview } from '../core/media.js';
 import { rewriteSelection } from '../features/editor/draft.js';
@@ -8,6 +8,7 @@ import { showVersion } from '../features/editor/preview.js';
 import { assetTile, bindAssets } from '../components/assets.js';
 import { state } from '../core/state.js';
 import { runtime } from '../core/runtime.js';
+import { sourceItem } from '../components/source.js';
 
 export async function renderEditorContent() {
   const a = state.current,
@@ -62,14 +63,7 @@ export async function renderEditorContent() {
       </div>
       <div class="sources-list">${
         a.sources
-          .map(
-            (s, i) => `<div class="source-item">
-      <strong>[S${i + 1}] ${escape(s.title)}</strong>
-      <a href="${safeUrl(s.url)}" target="_blank" rel="noopener noreferrer">${escape(s.url)} ${icon('external')}</a>
-      <p>${escape(s.text.slice(0, 240))}…</p>
-      <span class="hint">抓取于 ${date(s.retrieved_at, true)} · 完整正文已保存在本地</span>
-      </div>`,
-          )
+          .map(sourceItem)
           .join('') || '<p class="hint">来源仍在抓取，或尚未导入。</p>'
       }</div>
       <div class="panel-title" style="margin-top:28px">

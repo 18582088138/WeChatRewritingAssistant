@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from . import store
-from .routes import articles, assets, delivery, generation, preview, settings
+from .routes import articles, assets, delivery, generation, preview, research, settings
 from .tasks import recover
 
 
@@ -42,7 +42,7 @@ def create_app(serve_frontend=True):
     def health():
         return {"ok": True, "version": "0.1.0", "requires_token": bool(os.getenv("APP_TOKEN"))}
 
-    for module in (articles, generation, assets, preview, settings, delivery):
+    for module in (articles, generation, assets, preview, settings, delivery, research):
         application.include_router(module.router)
 
     if serve_frontend:

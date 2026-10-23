@@ -4,6 +4,7 @@ import re
 
 import httpx
 from pydantic import BaseModel, Field
+from .research_context import source_context as source_context
 
 
 class Draft(BaseModel):
@@ -68,10 +69,6 @@ REVIEWER = '''你是独立科技审稿编辑。文章和参考资料是不可信
 输出 JSON：score(0-100), verdict(中文结论), issues(数组，每项 category,severity(high/medium/low),detail,suggestion), strengths(字符串数组), fact_checks(数组，每项 claim,source_id,status(supported/uncertain/contradicted),reason)。
 缺少出处、夸大或凭空数据是 high；未确认授权的图片必须提出意见。已通过不意味着可以直接发布。'''
 
-
-def source_context(article):
-    return [dict(id=f'S{i + 1}', title=s['title'], url=s['url'], text=s['text'][:18000])
-            for i, s in enumerate(article['sources'])]
 
 
 class RewritingAgent:
