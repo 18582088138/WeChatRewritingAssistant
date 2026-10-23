@@ -86,6 +86,6 @@ conda run -n xkd_env_py312 python -m pytest -q
 
 浏览器验证可安装 `requirements-dev.txt` 后运行 `scripts/verify_browser.py`。`scripts/verify_editor.py` 使用真实验证样稿，`scripts/verify_live.py` 会消耗模型调用额度并把结果存到 `test-results/live-data/`。截图和验证数据均不提交 Git。
 
-GitHub 的测试工作流已通过。首次 Pages 部署在 `actions/configure-pages` 阶段被拒绝：`Resource not accessible by integration`。现有 Git 凭据能推送代码，但不能通过 REST 首次启用 Pages；仓库管理员需要在 Settings → Pages 选择 GitHub Actions，再重跑 Pages 工作流。当前尚无已验证的在线站点。
+GitHub Actions 和 Pages 已配置完成，测试及部署工作流均成功。线上地址：[Signal Studio](https://18582088138.github.io/WeChatRewritingAssistant/)。已实测全部 39 个前端文件与本地内容一致、正确 MIME 类型、桌面/平板/手机导航与设置；详情和复测命令见 [Pages 部署验证](docs/pages-deployment-validation.md)。Pages 托管静态前端，联网抓取、Agent 和文件存储仍需要连接 Python 后端。
 
 接口参考：[DeepSeek JSON Output](https://api-docs.deepseek.com/guides/json_mode)、[微信公众号开发文档](https://developers.weixin.qq.com/doc/service/)、[X API 文档](https://docs.x.com/)。应用定位为有来源的原创整理与解读，保留事实出处和人工确认流程。
