@@ -34,6 +34,9 @@ STOPWORDS = {
     "faster",
 }
 PRIMARY_HOSTS = {
+    "minimax.io",
+    "minimaxi.com",
+    "modelscope.cn",
     "arxiv.org",
     "nvidia.com",
     "nvidia.cn",
@@ -81,17 +84,21 @@ def decode_bing(url):
         value = parse_qs(urlparse(url).query).get("u", [""])[0]
         if value.startswith("a1"):
             try:
-                return base64.urlsafe_b64decode(value[2:] + "=" * (-len(value[2:]) % 4)).decode()
+                return base64.urlsafe_b64decode(
+                    value[2:] + "=" * (-len(value[2:]) % 4)
+                ).decode()
             except (ValueError, UnicodeError):
                 return ""
     return url
 
 
 def tokens(query):
+    query = re.sub(r"\b(?:site|lang|after|before):\S+", "", query)
     return (
         set(
             re.findall(
-                r"[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*|\d+(?:\.\d+)+|[\u4e00-\u9fff]{2,}", query.lower()
+                r"[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*|\d+(?:\.\d+)+|[\u4e00-\u9fff]{2,}",
+                query.lower(),
             )
         )
         - STOPWORDS
@@ -101,11 +108,14 @@ def tokens(query):
 def contains(term, text):
     if re.search("[\u4e00-\u9fff]", term):
         return term in text
-    return bool(re.search(r"(?<![a-z0-9])" + re.escape(term) + r"(?![a-z0-9.]|-[0-9])", text))
+    return bool(
+        re.search(r"(?<![a-z0-9])" + re.escape(term) + r"(?![a-z0-9.]|-[0-9])", text)
+    )
 
 
 def rank(results, query, limit):
     query_tokens = tokens(query)
+    site_filter = re.search(r"\bsite:([^\s/]+)", query, re.IGNORECASE)
     # Names containing model versions are stronger signals than generic industry words.
     identifiers = {t for t in query_tokens if any(c.isdigit() for c in t)}
     output, seen = [], set()
@@ -113,11 +123,18 @@ def rank(results, query, limit):
         url = result["url"]
         if urlparse(url).scheme not in {"http", "https"}:
             continue
+        host = (urlparse(url).hostname or "").lower()
+        if site_filter:
+            domain = site_filter[1].lower()
+            if host != domain and not host.endswith("." + domain):
+                continue
         key = normalize_url(url)
         if key in seen:
             continue
         seen.add(key)
-        haystack = (result["title"] + " " + result.get("snippet", "") + " " + url).lower()
+        haystack = (
+            result["title"] + " " + result.get("snippet", "") + " " + url
+        ).lower()
         matched = [t for t in query_tokens if contains(t, haystack)]
         if query_tokens and not matched:
             continue
@@ -140,7 +157,6 @@ def rank(results, query, limit):
             continue
         if len(matched) / max(1, len(query_tokens)) < 0.5:
             continue
-        host = urlparse(url).hostname or ""
         primary = any(host == h or host.endswith("." + h) for h in PRIMARY_HOSTS)
         result.update(
             relevance=round(len(matched) / max(1, len(query_tokens)), 3),
@@ -167,7 +183,8 @@ def bing(query):
     if match:
         query = '"' + match[0] + '"'
     raw, _, _ = fetch(
-        "https://www.bing.com/search?" + urlencode({"q": query, "setlang": "en-us", "cc": "us"}),
+        "https://www.bing.com/search?"
+        + urlencode({"q": query, "setlang": "en-us", "cc": "us"}),
         limit=2_000_000,
         timeout=15,
     )
@@ -228,7 +245,10 @@ def search_with_report(query, limit=6):
     from .research_provider import deepseek_search
 
     providers = [("bing", bing), ("official", official), ("arxiv", arxiv)]
-    if os.getenv("DEEPSEEK_API_KEY") and os.getenv("SEARCH_PROVIDER", "free") == "deepseek":
+    if (
+        os.getenv("DEEPSEEK_API_KEY")
+        and os.getenv("SEARCH_PROVIDER", "free") == "deepseek"
+    ):
         providers.insert(0, ("deepseek", deepseek_search))
     for index, (name, provider) in enumerate(providers):
         if index and name != "official" and len(rank(results, query, limit)) >= 3:
@@ -246,14 +266,18 @@ def search_with_report(query, limit=6):
             )
             results += found
         except Exception as exc:
-            attempts.append(dict(provider=name, status="failed", reason=failure_reason(exc)))
+            attempts.append(
+                dict(provider=name, status="failed", reason=failure_reason(exc))
+            )
     selected = rank(results, query, limit)
     return dict(
         query=query,
         results=selected,
         attempts=attempts,
         status="ok" if selected else "no_results",
-        warnings=[] if selected else ["未检索到相关来源；请换用模型名称等关键词或手动补充链接"],
+        warnings=[]
+        if selected
+        else ["未检索到相关来源；请换用模型名称等关键词或手动补充链接"],
     )
 
 

@@ -119,6 +119,7 @@ def download_assets(source, article_id, source_number):
                     rights="来源图片，需确认授权与水印",
                     watermark="unchecked",
                     sha256=digest,
+                    saved_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
                     bytes=path.stat().st_size,
                     animated=animated,
                 )

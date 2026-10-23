@@ -1,0 +1,7 @@
+{
+  "articles": [
+    {"name": "wechat_qwen_audio", "url": "https://mp.weixin.qq.com/s/ckMmkZ7tQNHpruTUTeuV_g", "anchors": ["FLASepformer", "JAEC", "22 ms", "pipeline"], "min_chars": 3000, "min_images": 8, "word_count": 1800},
+    {"name": "wechat_opus_games", "url": "https://mp.weixin.qq.com/s/MDTp3gFMLZzCPoFlJTqQ0w", "anchors": ["Opus", "DMCA", "参考链接"], "min_chars": 2000, "min_images": 10},
+    {"name": "zhidx_minimax", "url": "https://zhidx.com/p/581841.html", "anchors": ["MiniMax H3", "15秒", "结语"], "min_chars": 3000, "min_images": 5, "min_embeds": 2}
+  ]
+}

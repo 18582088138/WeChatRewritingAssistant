@@ -74,6 +74,8 @@ Pages 只能托管静态前端，不能运行 Python、保存服务器文件或�
 
 搜索与抓取已进行多轮真实图文、视频和论文验证，结果、访问限制与自定义链接复测方式见 [真实搜索与抓取验证](docs/research-validation.md)。
 
+用户提供的两篇公众号文章和一篇智东西文章也已进行真实 DeepSeek 与 Chrome 的完整链路测试，覆盖按审稿意见修改、段落重写、配图替换、组图和四平台素材包导出，见 [三篇文章 E2E 实测](docs/user-e2e-validation.md)。流程通过与文案审稿结论分别记录，平台素材包导出不代表外部草稿箱写入成功。
+
 ```powershell
 conda run -n xkd_env_py312 python -m pytest -q
 ```

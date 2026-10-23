@@ -2,7 +2,8 @@ from . import store
 from .agents import ReviewAgent, RewritingAgent
 from .research import download_assets, extract
 from .research_quality import failure_reason
-from .research_search import search_with_report, source_identity
+from .research_related import related_report
+from .research_search import source_identity
 
 
 def ingest(article_id):
@@ -38,7 +39,7 @@ def run(article_id, options, review_only=False):
                 )
                 urls = list(options.get("related_urls", []))
                 try:
-                    report = search_with_report(article["title"][:120])
+                    report = related_report(article["sources"][0])
                     article["research_report"] = report
                     urls += [r["url"] for r in report["results"]]
                     store.event(

@@ -14,6 +14,9 @@ sys.path.insert(0, str(ROOT))
 from PIL import Image
 
 from backend import store
+from dotenv import load_dotenv
+
+load_dotenv(ROOT / '.env')
 from backend.research import download_assets, extract
 from backend.research_quality import failure_reason
 from backend.research_search import search_with_report

@@ -5,6 +5,17 @@ from urllib.parse import urljoin, urlparse
 import httpx
 
 HEADERS = {"User-Agent": "WeChatRewritingAssistant/0.1 (research; source attribution)"}
+BROWSER_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+)
+
+
+def source_headers(url, referer=None):
+    headers = {"Referer": referer} if referer else {}
+    if urlparse(url).hostname == "mp.weixin.qq.com":
+        headers.update({"User-Agent": BROWSER_USER_AGENT, "Accept-Language": "zh-CN,zh;q=0.9"})
+    return headers
 
 
 def validate_url(url):
@@ -31,7 +42,7 @@ def fetch(url, limit=12_000_000, referer=None, timeout=35):
     with httpx.Client(timeout=timeout, headers=HEADERS, follow_redirects=False) as client:
         for _ in range(6):
             validate_url(url)
-            headers = {"Referer": referer} if referer else {}
+            headers = source_headers(url, referer)
             with client.stream("GET", url, headers=headers) as response:
                 if response.is_redirect:
                     url = urljoin(url, response.headers["location"])

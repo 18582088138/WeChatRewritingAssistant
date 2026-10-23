@@ -1,6 +1,7 @@
 """Assets API routes."""
 
 import io
+import re
 import uuid
 from pathlib import Path
 
@@ -35,7 +36,13 @@ async def upload(article_id: str, file: UploadFile = File(...)):
     def operation():
         article = get_article(article_id)
         asset_id = uuid.uuid4().hex
-        path = store.folder(article_id) / "materials" / "local" / "images" / (asset_id + ".jpg")
+        path = (
+            store.folder(article_id)
+            / "materials"
+            / "local"
+            / "images"
+            / (asset_id + ".jpg")
+        )
         path.parent.mkdir(parents=True, exist_ok=True)
         image.convert("RGB").save(path, quality=92)
         article["assets"].append(
@@ -103,8 +110,12 @@ def make_cards(article_id: str):
         if not article["body"]:
             raise HTTPException(422, "请先生成正文")
         created = cards(article)
+        created_ids = {a["id"] for a in created}
+        referenced = set(re.findall(r"/assets/(card-[^/]+)/file", article["body"]))
         article["assets"] = [
-            a for a in article["assets"] if not a["id"].startswith("card-")
+            a
+            for a in article["assets"]
+            if not a["id"].startswith("card-") or a["id"] in referenced - created_ids
         ] + created
         result.append(store.save(article))
 
@@ -122,7 +133,10 @@ def stock(article_id: str, payload: StockQuery):
             assets = stock_images(article_id, payload.query)
         except Exception as exc:
             raise HTTPException(
-                502, str(exc)[:300] if isinstance(exc, ValueError) else "图库搜索失败，请检查网络"
+                502,
+                str(exc)[:300]
+                if isinstance(exc, ValueError)
+                else "图库搜索失败，请检查网络",
             )
         article["assets"] += assets
         result.append(store.save(article))

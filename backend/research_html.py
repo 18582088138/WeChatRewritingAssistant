@@ -2,6 +2,7 @@
 
 import json
 import re
+from datetime import datetime
 from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
@@ -68,8 +69,24 @@ def extract_html(raw, final):
         published = soup.find("time").get("datetime", "")
     if not published and soup.select_one("#publish_time"):
         published = soup.select_one("#publish_time").get_text(" ", strip=True)
+    if not published and urlparse(final).hostname == "mp.weixin.qq.com":
+        match = re.search(
+            r"\bcreate_time\s*:\s*['\"](\d{4}-\d{2}-\d{2} \d{2}:\d{2})['\"]",
+            raw.decode("utf-8", errors="replace"),
+        )
+        if match:
+            published = datetime.strptime(match[1], "%Y-%m-%d %H:%M").isoformat() + "+08:00"
     selected = next((selector for selector in CONTENT_SELECTORS if soup.select_one(selector)), None)
     main = soup.select_one(selected) if selected else soup
+    links = [
+        dict(
+            url=urljoin(final, a["href"]),
+            title=a.get_text(" ", strip=True)[:180],
+            origin="article_link",
+        )
+        for a in main.select("a[href]")
+        if urlparse(urljoin(final, a["href"])).scheme in {"http", "https"}
+    ]
     images, videos, embedded = discover_media(main, soup, final)
     for tag in main.select(NOISE):
         tag.decompose()
@@ -82,10 +99,10 @@ def extract_html(raw, final):
             images, videos, embedded = discover_media(main, soup, final)
     # Publisher link bars are sometimes paragraphs rather than semantic navigation.
     for paragraph in main.find_all("p"):
-        links = paragraph.find_all("a")
+        paragraph_links = paragraph.find_all("a")
         if (
-            len(links) >= 3
-            and sum(len(a.get_text(strip=True)) for a in links)
+            len(paragraph_links) >= 3
+            and sum(len(a.get_text(strip=True)) for a in paragraph_links)
             >= len(paragraph.get_text(strip=True)) * 0.85
         ):
             paragraph.decompose()
@@ -127,6 +144,8 @@ def extract_html(raw, final):
     ):
         raise ValueError("来源返回验证或访问受限页面，未作为文章保存")
     author = meta(soup, "author") or data.get("author", "")
+    if not author and soup.select_one("#js_name"):
+        author = soup.select_one("#js_name").get_text(" ", strip=True)
     if isinstance(author, dict):
         author = author.get("name", "")
     canonical = soup.find("link", rel="canonical")
@@ -138,6 +157,7 @@ def extract_html(raw, final):
         embedded_media=embedded,
         published_at=published,
         author=author,
+        links=links[:80],
         headings=headings,
         canonical_url=urljoin(final, canonical["href"])
         if canonical and canonical.get("href")
