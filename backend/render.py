@@ -132,13 +132,16 @@ def export_zip(article, platform):
             if match:
                 asset = next((a for a in article['assets'] if a['id'] == match[1] and a['approved']), None)
                 if asset:
-                    image['src'] = 'assets/' + Path(asset['path']).name
+                    image['src'] = 'assets/' + asset['id'] + Path(asset['path']).suffix
                 else:
                     image.decompose()
         archive.writestr('preview.html', str(soup))
         archive.writestr('README.txt', '这是发布素材包。请在对应平台创建草稿，检查字数、分段、图文、来源与授权后保存。\n组图为 1080×1440 PNG。X 长文需要对应账号权限，普通帖子请按实际限额拆分。\n未调用任何直接发布接口。')
+        import json
+        archive.writestr('sources.json', json.dumps([dict(id=f'S{i+1}', title=s['title'], url=s['url'], retrieved_at=s['retrieved_at'])
+                                                   for i, s in enumerate(article['sources'])], ensure_ascii=False, indent=2))
         for asset in article['assets']:
             if asset.get('approved'):
                 path = store.folder(article['id']) / asset['path']
-                archive.write(path, 'assets/' + path.name)
+                archive.write(path, 'assets/' + asset['id'] + path.suffix)
     return stream.getvalue()

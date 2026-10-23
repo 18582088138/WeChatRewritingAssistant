@@ -74,4 +74,10 @@ conda run -n xkd_env_py312 python -m pytest -q
 
 测试覆盖来源地址隔离、访问令牌、HTML 清理、生成审稿落盘、版本冲突、局部重写、素材确认、组图、导出和模型失败恢复，模型请求使用替身，避免消耗密钥额度。
 
+本次开发验证：8 项后端测试通过，桌面和 390px 手机浏览器完成目录、设置、编辑保存、预览、版本、组图和下载检查，无脚本错误。真实 DeepSeek 验证使用历史论文 [DeepSeek-V3 Technical Report](https://arxiv.org/abs/2412.19437)，已完成抓取、写作、独立审稿并保存，结果 88 分。验证样稿保存在本地文章目录，明确说明是历史论文，不代表最新要闻。600 字短篇输出曾超限，已加压缩重试和超限保护，最终篇幅仍需人工核对。
+
+浏览器验证可安装 `requirements-dev.txt` 后运行 `scripts/verify_browser.py`。`scripts/verify_editor.py` 使用真实验证样稿，`scripts/verify_live.py` 会消耗模型调用额度并把结果存到 `test-results/live-data/`。截图和验证数据均不提交 Git。
+
+GitHub 的测试工作流已通过。首次 Pages 部署在 `actions/configure-pages` 阶段被拒绝：`Resource not accessible by integration`。现有 Git 凭据能推送代码，但不能通过 REST 首次启用 Pages；仓库管理员需要在 Settings → Pages 选择 GitHub Actions，再重跑 Pages 工作流。当前尚无已验证的在线站点。
+
 接口参考：[DeepSeek JSON Output](https://api-docs.deepseek.com/guides/json_mode)、[微信公众号开发文档](https://developers.weixin.qq.com/doc/service/)、[X API 文档](https://docs.x.com/)。应用定位为有来源的原创整理与解读，保留事实出处和人工确认流程。

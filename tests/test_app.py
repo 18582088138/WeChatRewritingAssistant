@@ -122,3 +122,12 @@ def test_review_flags_unverifiable_sources(client, monkeypatch):
     monkeypatch.setattr(agents, 'complete', lambda *args: dict(score=99, verdict='很好', issues=[], strengths=[], fact_checks=[]))
     review = agents.ReviewAgent().run(a, {'provider': 'deepseek', 'platform': 'wechat'})
     assert review['score'] <= 59 and review['issues'][-1]['severity'] == 'high'
+
+
+def test_stock_search_keeps_material_pending(client, monkeypatch):
+    a = article()
+    monkeypatch.setattr('backend.app.stock_images', lambda *args: [dict(id='stock-test', type='image', path='materials/pixabay/test.jpg',
+                                                                    alt='AI', approved=False, attribution='https://pixabay.com/example')])
+    response = client.post(f'/api/articles/{a["id"]}/stock', json={'query': 'artificial intelligence'})
+    assert response.status_code == 200
+    assert response.json()['assets'][0]['approved'] is False
