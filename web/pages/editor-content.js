@@ -1,14 +1,15 @@
 import { icon } from '../icons.js';
 import { $, $$, escape, date, toast } from '../core/dom.js';
 import { api } from '../core/api.js';
-import { hydrateImages, hydratePreview } from '../core/media.js';
 import { rewriteSelection } from '../features/editor/draft.js';
 import { makeCards, uploadAsset, openAssetPicker } from '../features/editor/assets.js';
 import { showVersion } from '../features/editor/preview.js';
-import { assetTile, bindAssets } from '../components/assets.js';
+import { bindAssets } from '../components/assets.js';
 import { state } from '../core/state.js';
 import { runtime } from '../core/runtime.js';
 import { sourceItem } from '../components/source.js';
+import { pagedPreview } from '../features/editor/paged-preview.js';
+import { assetPages } from '../features/editor/asset-pages.js';
 
 export async function renderEditorContent() {
   const a = state.current,
@@ -50,9 +51,7 @@ export async function renderEditorContent() {
     try {
       const data = await api(`/api/articles/${a.id}/render`);
       if (state.current?.id !== a.id || state.tab !== 'preview') return;
-      el.innerHTML = `<div class="preview-prose">
-      <h1>${escape(a.title)}</h1>${data.html}</div>`;
-      await hydratePreview(el);
+      pagedPreview(el,a.title,data.pages||[data.html]);
     } catch (err) {
       el.textContent = err.message;
     }
@@ -71,15 +70,15 @@ export async function renderEditorContent() {
       <label class="button secondary small" style="margin:0">${icon('plus')} 上传本地图片<input type="file" id="upload-asset" accept="image/png,image/jpeg,image/webp" hidden style="display:none">
       </label>
       </div>
-      <div class="notice">来源素材需人工确认授权与水印，确认后才会用于正文。图片可从编辑页插入或替换。</div>
-      <div class="asset-grid">${a.assets.map((asset) => assetTile(a, asset)).join('') || '<p class="hint">暂无素材，上传你的配图开始编辑。</p>'}</div>`;
+      <div class="notice">来源素材可用于内部草稿预览，确认授权与水印后才进入导出素材包。图片可从编辑页插入或替换。</div>
+      <div id="paged-assets"></div>`;
     const stockBar = document.createElement('div');
     stockBar.className = 'notice';
     stockBar.innerHTML = `<label>图库关键词<input id="stock-query" placeholder="例如 artificial intelligence / semiconductor">
       </label>
       <button class="button secondary small" id="search-stock">${icon('search')} 搜索 Pixabay 素材并保存</button>
       <p class="hint">使用后端 Pixabay 密钥，素材保留作者与许可来源，使用前仍需确认。</p>`;
-    el.querySelector('.asset-grid').before(stockBar);
+    el.querySelector('#paged-assets').before(stockBar);
     $('#search-stock').onclick = async () => {
       const query = $('#stock-query').value.trim();
       if (!query) {
@@ -102,7 +101,7 @@ export async function renderEditorContent() {
     };
     bindAssets(el);
     $('#upload-asset').onchange = uploadAsset;
-    hydrateImages(el);
+    assetPages($('#paged-assets'));
   } else {
     el.innerHTML = '<div class="loading">正在读取修订记录</div>';
     try {

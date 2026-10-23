@@ -1,8 +1,10 @@
 import ipaddress
 import socket
+import time
 from urllib.parse import urljoin, urlparse
 
 import httpx
+from .configuration import settings
 
 HEADERS = {"User-Agent": "WeChatRewritingAssistant/0.1 (research; source attribution)"}
 BROWSER_USER_AGENT = (
@@ -13,7 +15,7 @@ BROWSER_USER_AGENT = (
 
 def source_headers(url, referer=None):
     headers = {"Referer": referer} if referer else {}
-    if urlparse(url).hostname == "mp.weixin.qq.com":
+    if urlparse(url).hostname in {"mp.weixin.qq.com", "zhidx.com", "oss.zhidx.com"}:
         headers.update({"User-Agent": BROWSER_USER_AGENT, "Accept-Language": "zh-CN,zh;q=0.9"})
     return headers
 
@@ -39,6 +41,18 @@ def validate_url(url):
 
 
 def fetch(url, limit=12_000_000, referer=None, timeout=35):
+    retries = settings("research").get("download_retries", 1)
+    for attempt in range(retries + 1):
+        try:
+            return _fetch(url, limit, referer, timeout)
+        except (httpx.TimeoutException, httpx.NetworkError, httpx.HTTPStatusError) as exc:
+            transient = not isinstance(exc, httpx.HTTPStatusError) or exc.response.status_code in {500, 502, 503, 504}
+            if not transient or attempt == retries:
+                raise
+            time.sleep(min(2 ** attempt, 4))
+
+
+def _fetch(url, limit, referer, timeout):
     with httpx.Client(timeout=timeout, headers=HEADERS, follow_redirects=False) as client:
         for _ in range(6):
             validate_url(url)

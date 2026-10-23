@@ -5,6 +5,7 @@ from fastapi.responses import HTMLResponse
 
 from ..dependencies import auth, get_article
 from ..render import document, html
+from ..pagination import paginate
 
 router = APIRouter(dependencies=[Depends(auth)])
 
@@ -16,4 +17,5 @@ def preview(article_id: str):
 
 @router.get("/api/articles/{article_id}/render")
 def rendered(article_id: str):
-    return {"html": html(get_article(article_id)["body"])}
+    content = html(get_article(article_id)["body"])
+    return {"html": content, "pages": paginate(content)}

@@ -143,7 +143,7 @@ def rank(results, query, limit):
             continue
         if identifiers and any(
             t in query_tokens and not contains(t, title_url)
-            for t in {"sonnet", "opus", "haiku", "terminus"}
+            for t in {"sonnet", "opus", "haiku", "terminus", "minimax", "deepseek", "qwen"}
         ):
             continue
         compact_title = re.sub(r"\s+([.-])", r"\1", result["title"].lower())

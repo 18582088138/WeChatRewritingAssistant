@@ -24,9 +24,10 @@ export function render() {
 
 export async function refresh(redraw = true) {
   try {
-    const [articles, settings] = await Promise.all([api('/api/articles'), api('/api/settings')]);
+    const [articles, settings, config] = await Promise.all([api('/api/articles'), api('/api/settings'), api('/api/config')]);
     state.articles = articles;
     state.settings = settings;
+    state.config = config;
     state.online = true;
     if (state.current && !state.dirty) {
       const current = articles.find((a) => a.id === state.current.id);

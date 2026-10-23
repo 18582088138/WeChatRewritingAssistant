@@ -1,0 +1,26 @@
+{
+  "word_count": 1800,
+  "word_count_choices": [
+    600,
+    1000,
+    1200,
+    1800,
+    2500,
+    4000
+  ],
+  "provider": "deepseek",
+  "style": "专业、自然、克制的中文科技解读，保留关键技术细节",
+  "require_images": true,
+  "min_images": 2,
+  "max_images": 5,
+  "compression_retries": 2,
+  "fusion_retries": 1,
+  "length_tolerance": 1.5,
+  "temperature": 0.45,
+  "max_tokens": 7000,
+  "timeout_seconds": 180,
+  "review_temperature": 0.15,
+  "review_max_tokens": 7000,
+  "review_timeout_seconds": 180,
+  "model": "deepseek-chat"
+}

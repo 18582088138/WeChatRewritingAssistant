@@ -1,0 +1,123 @@
+.reference-window {
+  position:fixed;
+  inset:100px 28px auto auto;
+  width:min(650px,calc(100vw - 48px));
+  max-height:calc(100vh - 130px);
+  margin:0;
+  padding:24px;
+  background:#faf8f2;
+  border:1px solid #d3dbd5;
+  border-radius:12px;
+  overflow:auto;
+  z-index:80;
+  box-shadow:0 12px 40px #243d3020}
+
+.reference-header {
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  align-items:start}
+.reference-header h2 {
+  margin:0;
+  font-size:22px}
+.reference-header p {
+  font-size:13px;
+  color:#526258;
+  margin:8px 0 0}
+.reference-tabs {
+  display:flex;
+  gap:10px;
+  margin:20px 0}
+.reference-body textarea {
+  height:260px;
+  resize:vertical;
+  line-height:1.8;
+  background:white}
+.reference-import {
+  border-top:1px solid #d3dbd5;
+  margin-top:20px;
+  padding-top:16px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px}
+.reference-import details {
+  width:100%}
+.reference-basket {
+  max-height:150px;
+  overflow:auto;
+  line-height:1.6}
+.reference-basket p {
+  border-left:2px solid #497a63;
+  padding:8px 12px;
+  background:#eef2e9;
+  font-size:13px}
+.reference-media-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:16px}
+.reference-media-grid img,.reference-media-grid video {
+  width:100%;
+  max-height:170px;
+  object-fit:contain;
+  background:#e9ede6}
+.reference-media-grid p {
+  font-size:13px}
+.storage-path {
+  overflow-wrap:anywhere}
+.page-controls {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin:12px 0 24px;
+  font-size:13px}
+.paged-article {
+  min-height:450px;
+  max-width:720px;
+  margin:auto;
+  background:#faf8f2;
+  padding:28px}
+.paged-article h1 {
+  font-size:25px;
+  line-height:1.5}
+.mobile-fusion-note {
+  display:none}
+.source-full-text {
+  max-height:320px;
+  overflow:auto}
+.editor-body {
+  min-height:390px!important;
+  height:52vh;
+  max-height:600px}
+.reference-launch {
+  margin-bottom:16px}
+
+@media(max-width:767px) {
+  .reference-window {
+  inset:70px 12px auto;
+  width:calc(100vw - 24px);
+  max-height:calc(100vh - 90px);
+  padding:18px}
+.desktop-fusion {
+  display:none}
+.mobile-fusion-note {
+  display:block}
+.paged-article {
+  padding:18px;
+  min-height:420px}
+.reference-media-grid {
+  gap:12px}
+.page-controls {
+  gap:8px}
+.editor-body {
+  height:48vh;
+  min-height:300px!important}
+}
+
+.reference-header {
+  position:sticky;
+  top:-24px;
+  z-index:2;
+  background:#faf8f2;
+  padding:12px 0}
+

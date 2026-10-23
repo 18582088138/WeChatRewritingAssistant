@@ -24,7 +24,7 @@ export async function hydrateImages(root = document) {
 }
 
 export async function hydratePreview(root) {
-  const imgs = $$('img', root);
+  const imgs = $$('img,video', root);
   await Promise.allSettled(
     imgs.map(async (img) => {
       const match = img

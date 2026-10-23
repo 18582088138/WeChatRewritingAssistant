@@ -1,0 +1,65 @@
+{
+  "window_days": 3,
+  "allow_background": true,
+  "max_sources": 8,
+  "max_candidates": 12,
+  "context_chars": 28000,
+  "image_limit": 12,
+  "video_limit": 3,
+  "image_bytes": 8000000,
+  "video_bytes": 25000000,
+  "download_retries": 1,
+  "publisher_indexes": [
+    [
+      [
+        "minimax"
+      ],
+      "https://www.minimax.io/blog",
+      "/blog/"
+    ],
+    [
+      [
+        "claude",
+        "anthropic",
+        "sonnet",
+        "opus"
+      ],
+      "https://www.anthropic.com/sitemap.xml",
+      "sitemap"
+    ],
+    [
+      [
+        "deepseek"
+      ],
+      "https://api-docs.deepseek.com/sitemap.xml",
+      "news_sitemap"
+    ],
+    [
+      [
+        "qwen",
+        "通义"
+      ],
+      "https://qwenlm.github.io/blog/",
+      "/blog/"
+    ],
+    [
+      [
+        "nvidia",
+        "gr00t",
+        "dgx",
+        "cuda"
+      ],
+      "https://developer.nvidia.com/blog/feed/",
+      "feed"
+    ],
+    [
+      [
+        "smolvla",
+        "hugging",
+        "lerobot"
+      ],
+      "https://huggingface.co/blog",
+      "/blog/"
+    ]
+  ]
+}

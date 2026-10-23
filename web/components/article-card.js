@@ -3,7 +3,7 @@ import { escape, date } from '../core/dom.js';
 import { statusNames } from '../core/state.js';
 
 export function articleCard(a) {
-  const cover = a.assets.find((x) => x.type === 'image' && x.approved && !x.id.startsWith('card-'));
+  const cover = a.assets.find((x) => x.type === 'image' && !x.id.startsWith('card-'));
   const key = a.keywords[0] || '行业要闻';
   const stage = a.error
     ? '处理失败，可重试'

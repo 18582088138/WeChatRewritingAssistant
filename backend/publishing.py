@@ -30,6 +30,9 @@ def wechat_draft(article, settings):
     cover_id = settings.get('wechat', {}).get('thumb_media_id', '').strip()
     if not approved and not cover_id:
         raise ValueError('公众号草稿需要封面：请选择已确认素材，或配置 thumb_media_id')
+    soup = BeautifulSoup(html(article['body']), 'html.parser')
+    if soup.find('video'):
+        raise ValueError('公众号草稿暂不支持本地视频上传，请先移除视频嵌入；视频仍可用于本地预览与素材包导出')
     with httpx.Client(timeout=60) as client:
         token = wechat_check(client.post('https://api.weixin.qq.com/cgi-bin/stable_token', json={
             'grant_type': 'client_credential', 'appid': app_id, 'secret': secret}))['access_token']
@@ -38,7 +41,6 @@ def wechat_draft(article, settings):
             with cover.open('rb') as file:
                 cover_id = wechat_check(client.post('https://api.weixin.qq.com/cgi-bin/material/add_material',
                     params={'access_token': token, 'type': 'image'}, files={'media': (cover.name, file, 'image/' + ('png' if cover.suffix == '.png' else 'jpeg'))}))['media_id']
-        soup = BeautifulSoup(html(article['body']), 'html.parser')
         for image in soup.find_all('img'):
             asset = next((a for a in approved if image.get('src') == f"/api/articles/{article['id']}/assets/{a['id']}/file"), None)
             if not asset:

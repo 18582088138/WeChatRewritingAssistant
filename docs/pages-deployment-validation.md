@@ -1,4 +1,6 @@
-# GitHub Pages 部署验证
+# GitHub Pages 部署验证（历史记录）
+
+本文件记录先前静态 GUI 部署。当前产品方案是同平台提供前端和 Python 后端，本轮只验收本地完整应用，不继续 Pages 部署；详见 [本地产品验证](local-product-validation.md)。Pages 工作流已移除 push 自动部署，仅保留手动触发。
 
 测试日期：2026-10-23；线上地址：[Signal Studio 科技内容工作台](https://18582088138.github.io/WeChatRewritingAssistant/)。测试访问实际 GitHub Pages 页面，没有使用本地前端替代，也没有模拟网络响应。
 

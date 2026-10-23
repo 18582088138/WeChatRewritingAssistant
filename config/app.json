@@ -1,0 +1,6 @@
+{
+  "host": "127.0.0.1",
+  "port": 8000,
+  "open_browser": true,
+  "conda_env": "xkd_env_py312"
+}

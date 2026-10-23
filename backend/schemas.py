@@ -3,6 +3,7 @@
 from typing import Literal
 
 from pydantic import BaseModel, Field
+from .configuration import settings
 
 
 class ImportArticle(BaseModel):
@@ -12,10 +13,16 @@ class ImportArticle(BaseModel):
 
 
 class Options(BaseModel):
-    word_count: int = Field(default=1200, ge=300, le=6000)
-    style: str = Field(default="专业、有观点、自然简洁", max_length=300)
+    word_count: int = Field(
+        default_factory=lambda: settings("generation")["word_count"], ge=300, le=6000
+    )
+    style: str = Field(
+        default_factory=lambda: settings("generation")["style"], max_length=300
+    )
     platform: Literal["wechat", "x", "xiaohongshu", "weibo"] = "wechat"
-    provider: Literal["deepseek", "openrouter"] = "deepseek"
+    provider: Literal["deepseek", "openrouter"] = Field(
+        default_factory=lambda: settings("generation")["provider"]
+    )
     research: bool = True
     related_urls: list[str] = Field(default_factory=list, max_length=4)
     revise: bool = False
@@ -33,7 +40,9 @@ class Paragraph(BaseModel):
     start: int = Field(ge=0)
     end: int = Field(ge=1)
     revision: int
-    instruction: str = Field(default="让表达更自然简洁，保留事实与来源", max_length=1000)
+    instruction: str = Field(
+        default="让表达更自然简洁，保留事实与来源", max_length=1000
+    )
     provider: Literal["deepseek", "openrouter"] = "deepseek"
 
 

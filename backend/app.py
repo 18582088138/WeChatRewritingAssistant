@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import store
 from .routes import articles, assets, delivery, generation, preview, research, settings
+from .routes import references
 from .tasks import recover
 
 
@@ -26,10 +27,13 @@ async def lifespan(app):
 
 def create_app(serve_frontend=True):
     application = FastAPI(
-        title="Signal Studio · WeChatRewritingAssistant", version="0.1.0", lifespan=lifespan
+        title="Signal Studio · WeChatRewritingAssistant",
+        version="0.1.0",
+        lifespan=lifespan,
     )
     origins = os.getenv(
-        "CORS_ORIGINS", "http://localhost:8000,http://127.0.0.1:8000,https://18582088138.github.io"
+        "CORS_ORIGINS",
+        "http://localhost:8000,http://127.0.0.1:8000,https://18582088138.github.io",
     ).split(",")
     application.add_middleware(
         CORSMiddleware,
@@ -40,14 +44,29 @@ def create_app(serve_frontend=True):
 
     @application.get("/api/health")
     def health():
-        return {"ok": True, "version": "0.1.0", "requires_token": bool(os.getenv("APP_TOKEN"))}
+        return {
+            "ok": True,
+            "version": "0.1.0",
+            "requires_token": bool(os.getenv("APP_TOKEN")),
+        }
 
-    for module in (articles, generation, assets, preview, settings, delivery, research):
+    for module in (
+        articles,
+        generation,
+        assets,
+        preview,
+        settings,
+        delivery,
+        research,
+        references,
+    ):
         application.include_router(module.router)
 
     if serve_frontend:
         application.mount(
-            "/", StaticFiles(directory=str(store.ROOT / "web"), html=True), name="frontend"
+            "/",
+            StaticFiles(directory=str(store.ROOT / "web"), html=True),
+            name="frontend",
         )
     return application
 

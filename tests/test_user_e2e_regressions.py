@@ -47,7 +47,8 @@ def test_related_queries_separate_entities_and_filter_code_urls(monkeypatch):
     assert [r["url"] for r in report["results"]] == ["https://arxiv.org/abs/2508.19528"]
 
 
-def test_length_retries_include_measured_budget(monkeypatch):
+def test_length_retries_include_measured_budget(monkeypatch, tmp_path):
+    monkeypatch.setattr(store, "DATA", tmp_path)
     long = dict(title="测试", summary="摘要", keywords=["AI"], body="正文。" * 1000)
     short = dict(title="测试", summary="摘要", keywords=["AI"], body="简洁。" * 150)
     calls = []
@@ -65,7 +66,7 @@ def test_length_retries_include_measured_budget(monkeypatch):
     assert result["body"] == short["body"] and len(calls) == 3
     assert (
         calls[-1]["measured_prose_chars"] == 3000
-        and calls[-1]["maximum_prose_chars"] == 720
+        and calls[-1]["maximum_prose_chars"] == 600
     )
 
 

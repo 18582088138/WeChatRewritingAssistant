@@ -1,14 +1,15 @@
 """Bound model context while retaining evidence from the full article, not just its opening."""
 
-CONTEXT_BUDGET = 28_000
+from .configuration import settings
 
 
 def evidence_text(source):
+    CONTEXT_BUDGET = settings("research")["context_chars"]
     text = source["text"]
     if len(text) <= CONTEXT_BUDGET:
         return text, False
     # Distribute evidence across the document; section labels make omissions explicit.
-    size = 3_300
+    size = max(250, min(3300, (CONTEXT_BUDGET - 1200) // 8))
     offsets = {0, len(text) - size}
     offsets.update(round((len(text) - size) * index / 7) for index in range(1, 7))
     sections = []

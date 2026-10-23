@@ -67,6 +67,8 @@ class Session:
         article = self.idle(article_id)
         assert article["status"] == "Done" and article["review"]
         assert article["body"] and article["summary"] and article["keywords"]
+        assert '![' in article['body'], '原创稿必须包含配图'
+        assert article.get('archive_title') == source['title']
         assert re.search(r"\[S\d+\]", article["body"])
         versions = self.call("GET", f"/api/articles/{article_id}/versions")
         assert len(versions) >= 2

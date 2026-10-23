@@ -4,12 +4,15 @@ import re
 from urllib.parse import urlparse
 
 from .research_search import search_with_report, source_identity
+from .research_temporal import published
+from .configuration import settings
+from datetime import timedelta
 
 
 def queries(source):
     text = source["title"] + "\n" + source["text"][:12000]
     names = re.findall(
-        r"(?i)\b(?:MiniMax\s+H\d+|Claude\s+(?:Opus|Sonnet|Haiku)\s+\d+(?:\.\d+)?|FLASepformer|JAEC|SmolVLA|DeepSeek[ -]V\d+(?:\.\d+)?|Qwen\d+(?:\.\d+)?(?:-VL)?)\b",
+        r"(?i)(?<![a-z0-9])(?:MiniMax\s*H\d+|(?:Claude\s+)?(?:Opus|Sonnet|Haiku)\s*\d+(?:\.\d+)?|FLASepformer|JAEC|SmolVLA|DeepSeek[ -]V\d+(?:\.\d+)?|Qwen\d+(?:\.\d+)?(?:-VL)?)(?![a-z0-9.])",
         text,
     )
     names = list(dict.fromkeys(name.strip() for name in names))
@@ -21,9 +24,23 @@ def related_report(source):
     for query in queries(source):
         if query.upper() == "JAEC":
             query = "JAEC site:modelscope.cn"
+        date = published(source.get("published_at"))
+        if date:
+            days = settings("research")["window_days"]
+            query += f" after:{date - timedelta(days=days)} before:{date + timedelta(days=days + 1)}"
         report = search_with_report(query)
         reports.append(report)
         candidates += report["results"]
+        if settings("research")["allow_background"]:
+            background = search_with_report(
+                queries(source)[len(reports) - 1] + " technical paper"
+            )
+            candidates += [
+                r
+                for r in background["results"]
+                if "arxiv.org/" in r["url"] or "tutorial" in r["title"].lower()
+            ]
+            report["background_search"] = background
     references = list(source.get("links", []))
     references += [
         dict(
@@ -56,7 +73,10 @@ def related_report(source):
     return dict(
         query=source["title"],
         queries=[r["query"] for r in reports],
-        results=selected[:10],
+        results=selected[: settings("research")["max_candidates"]],
+        publication_window=dict(
+            center=source.get("published_at"), days=settings("research")["window_days"]
+        ),
         attempts=[a for r in reports for a in r["attempts"]],
         query_reports=reports,
         reference_links=references,

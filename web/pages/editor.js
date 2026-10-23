@@ -8,12 +8,13 @@ import { reviewHtml } from '../components/review.js';
 import { renderEditorContent } from './editor-content.js';
 import { state, platformNames, statusNames } from '../core/state.js';
 import { runtime } from '../core/runtime.js';
+import { openReferences } from '../features/editor/references.js';
 
 export function renderEditor() {
   document.body.dataset.view = 'editor';
   const a = state.current,
     busy = a.status === 'Process',
-    opts = a.options || {};
+    opts = { ...(state.config?.generation || {}), ...(a.options || {}) };
   $('#main').innerHTML =
     `<button class="back-link" id="back-library">${icon('back')}返回文章目录</button>
       <div class="editor-head">
@@ -44,6 +45,7 @@ export function renderEditor() {
       </div>
       </div>${deliveryPanel(a)}</div>
       <aside class="editor-aside">
+      <button class="button secondary full-width reference-launch" id="open-references">参考资料浮窗 · ${a.sources.length} 篇</button>
       <div class="panel">
       <div class="panel-title">
       <h3>${icon('edit')} 创作设置</h3>
@@ -56,9 +58,9 @@ export function renderEditor() {
         )
         .join('')}</select>
       </label>
-      <label>目标篇幅<select id="word-count">${[600, 1000, 1200, 1800, 2500, 4000].map((n) => `<option value="${n}" ${(opts.word_count || 1200) === n ? 'selected' : ''}>约 ${n} 字</option>`).join('')}</select>
+      <label>目标篇幅<select id="word-count">${(state.config?.generation.word_count_choices||[600,1000,1200,1800,2500,4000]).map((n) => `<option value="${n}" ${(opts.word_count || state.config?.generation.word_count || 1800) === n ? 'selected' : ''}>约 ${n} 字</option>`).join('')}</select>
       </label>
-      <label>语言风格<input id="writing-style" value="${escape(opts.style || '专业、有观点、自然简洁')}">
+      <label>语言风格<input id="writing-style" value="${escape(opts.style || state.config?.generation.style || '专业、自然、克制的中文科技解读')}">
       </label>
       <label>模型服务<select id="model-provider">
       <option value="deepseek" ${opts.provider !== 'openrouter' ? 'selected' : ''}>DeepSeek</option>
@@ -113,6 +115,8 @@ export function renderEditor() {
       </div>
       </aside>
       </div>`;
+  const aside = $('.editor-aside'), panels = aside.querySelectorAll(':scope > .panel');
+  aside.insertBefore(panels[2], panels[0]);
   $('#back-library').onclick = () => runtime.setView('library');
   $('#save-draft').onclick = () => saveDraft();
   $('#open-preview').onclick = openPreview;
@@ -125,6 +129,7 @@ export function renderEditor() {
       }),
   );
   $('#generate').onclick = () => generate(false);
+  $('#open-references').onclick = openReferences;
   $('#revise')?.addEventListener('click', () => generate(true));
   $('#review-only').onclick = reviewCurrent;
   bindDelivery();

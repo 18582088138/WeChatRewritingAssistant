@@ -2,7 +2,6 @@
 
 import hashlib
 import io
-import os
 import re
 from urllib.parse import urlparse
 
@@ -12,6 +11,7 @@ from PIL import Image, ImageOps
 from . import store
 from .network import fetch
 from .research_quality import failure_reason, save_metadata
+from .configuration import settings
 
 
 def video_format(raw):
@@ -28,7 +28,13 @@ def raster_image(raw):
         lowered = raw.lower()
         if any(
             mark in lowered
-            for mark in [b"<script", b"<!entity", b"<foreignobject", b"@import", b"url(http"]
+            for mark in [
+                b"<script",
+                b"<!entity",
+                b"<foreignobject",
+                b"@import",
+                b"url(http",
+            ]
         ):
             raise ValueError("SVG 含主动内容或外部资源，未渲染")
         if re.search(rb'(?:href|src)\s*=\s*["\']\s*(?!#|data:)[^"\']+', lowered):
@@ -44,9 +50,12 @@ def raster_image(raw):
 
 def download_assets(source, article_id, source_number):
     result, reports, hashes = [], [], set()
-    root = store.folder(article_id) / "materials" / f"source-{source_number}"
-    image_limit = min(30, max(1, int(os.getenv("SOURCE_IMAGE_LIMIT", "12"))))
-    video_limit = min(10, max(1, int(os.getenv("SOURCE_VIDEO_LIMIT", "3"))))
+    root = store.folder(article_id) / source.get(
+        "storage_dir", f"materials/source-{source_number}"
+    )
+    cfg = settings("research")
+    image_limit = cfg["image_limit"]
+    video_limit = cfg["video_limit"]
     for index, item in enumerate(source.get("images", [])):
         report = dict(type="image", url=item["url"], status="skipped")
         if sum(a["type"] == "image" for a in result) >= image_limit or index >= 60:
@@ -65,7 +74,10 @@ def download_assets(source, article_id, source_number):
                 for candidate in candidates[:4]:
                     try:
                         raw, _, final = fetch(
-                            candidate, limit=8_000_000, referer=source["url"], timeout=15
+                            candidate,
+                            limit=cfg["image_bytes"],
+                            referer=source["url"],
+                            timeout=15,
                         )
                         raw = raster_image(raw)
                         break
@@ -124,7 +136,9 @@ def download_assets(source, article_id, source_number):
                     animated=animated,
                 )
             )
-            report.update(status="saved", width=width, height=height, bytes=path.stat().st_size)
+            report.update(
+                status="saved", width=width, height=height, bytes=path.stat().st_size
+            )
         except Exception as exc:
             report.update(status="failed", reason=failure_reason(exc))
         reports.append(report)
@@ -137,7 +151,7 @@ def download_assets(source, article_id, source_number):
         try:
             if urlparse(url).path.lower().endswith((".m3u8", ".mpd")):
                 raise ValueError("流媒体播放列表仅保留来源，当前不下载分段视频")
-            raw, mime, final = fetch(url, limit=25_000_000, referer=source["url"])
+            raw, mime, final = fetch(url, limit=cfg["video_bytes"], referer=source["url"])
             suffix = video_format(raw)
             path = root / "videos" / f"{index}{suffix}"
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -145,6 +159,7 @@ def download_assets(source, article_id, source_number):
             result.append(
                 dict(
                     id=f"s{source_number}-video-{index}",
+                    alt=source.get("title", "参考资料") + f" · 视频 {index + 1}",
                     type="video",
                     path=path.relative_to(store.folder(article_id)).as_posix(),
                     source_url=final,

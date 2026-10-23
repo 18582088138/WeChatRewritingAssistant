@@ -12,7 +12,7 @@ from PIL import Image
 from .. import store
 from ..dependencies import auth, get_article
 from ..materials import stock_images
-from ..render import cards
+from ..card_layout import cards
 from ..schemas import Approval, StockQuery
 from ..tasks import launch
 
@@ -81,6 +81,9 @@ def approve(article_id: str, asset_id: str, payload: Approval):
             alt=payload.alt,
             watermark="manually_checked" if payload.approved else "unchecked",
         )
+        for derived in article["assets"]:
+            if derived.get("derived_from") == asset_id:
+                derived.update(approved=payload.approved, watermark="manually_checked" if payload.approved else "unchecked")
         article["review"] = None
         result.append(store.save(article))
 

@@ -7,6 +7,7 @@ import re
 import shutil
 import subprocess
 import zipfile
+from pathlib import Path
 
 from PIL import Image
 
@@ -15,6 +16,7 @@ def revision_checks(api, result, output):
     article_id = result["article_id"]
     route = "/api/articles/" + article_id
     before = api.call("GET", route)
+    article_root = Path(before['storage_path'])
     assert before["review"]["draft_revision"] == before["revision"]
     options = dict(before.get("options", {}), research=False, revise=True)
     options["word_count"] = max(1800, options.get("word_count", 1200))
@@ -34,7 +36,7 @@ def revision_checks(api, result, output):
         a["id"].startswith(f"card-r{after['revision']}-") for a in card_assets
     )
     for asset in card_assets:
-        with Image.open(output / "articles" / article_id / asset["path"]) as card:
+        with Image.open(article_root / asset['path']) as card:
             assert card.size == (1080, 1440)
             card.verify()
     exports = {}
@@ -49,7 +51,9 @@ def revision_checks(api, result, output):
             referenced = re.findall(
                 r"!\[[^]]*\]\((/api/articles/[^)]+)\)", after["body"]
             )
-            assert len(images) == len(referenced), "正文配图引用在导出时丢失"
+            approved_ids = {a['id'] for a in after['assets'] if a['approved']}
+            approved_references = [url for url in referenced if url.split('/assets/')[1].split('/')[0] in approved_ids]
+            assert len(images) == len(approved_references), "已确认正文配图在导出时丢失"
             assert all(
                 a["id"] not in "\n".join(archive.namelist())
                 for a in after["assets"]
@@ -77,9 +81,9 @@ def material_checks(api, result, output):
     article = api.call("GET", "/api/articles/" + result["article_id"])
     evidence = []
     for asset in article["assets"]:
-        if not asset.get("source_url"):
+        if not asset.get('source_url') or asset['id'].startswith('card-'):
             continue
-        path = output / "articles" / article["id"] / asset["path"]
+        path = Path(article['storage_path']) / asset['path']
         if asset["type"] == "video":
             probe = shutil.which("ffprobe")
             if not probe:

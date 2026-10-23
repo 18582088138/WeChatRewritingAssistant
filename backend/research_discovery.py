@@ -8,19 +8,12 @@ from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 
 from .network import fetch
-
-INDEXES = [
-    (("claude", "anthropic", "sonnet"), "https://www.anthropic.com/sitemap.xml", "sitemap"),
-    (("deepseek",), "https://api-docs.deepseek.com/sitemap.xml", "news_sitemap"),
-    (("qwen", "通义"), "https://qwenlm.github.io/blog/", "/blog/"),
-    (("nvidia", "gr00t", "dgx", "cuda"), "https://developer.nvidia.com/blog/feed/", "feed"),
-    (("smolvla", "hugging", "lerobot"), "https://huggingface.co/blog", "/blog/"),
-]
+from .configuration import settings
 
 
 def official(query):
     output = []
-    for triggers, index_url, path in INDEXES:
+    for triggers, index_url, path in settings("research")["publisher_indexes"]:
         if not any(word in query.lower() for word in triggers):
             continue
         raw, _, final = fetch(index_url, limit=2_000_000, timeout=15)

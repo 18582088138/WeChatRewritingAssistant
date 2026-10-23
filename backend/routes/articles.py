@@ -8,6 +8,7 @@ from .. import store
 from ..dependencies import auth, get_article
 from ..network import validate_url
 from ..schemas import Edit, ImportArticle
+from ..archive import attach_source
 from ..tasks import background_job, launch, reserve
 
 router = APIRouter(dependencies=[Depends(auth)])
@@ -43,6 +44,8 @@ def import_article(payload: ImportArticle, background: BackgroundTasks):
         ]
         article["stage"] = "来源已就绪"
         store.save(article)
+        attach_source(article["id"], article["sources"][0], 1, "materials/source-1/text")
+        store.save(article)
     else:
         reserve(article["id"])
         article.update(status="Process", stage="抓取来源")
@@ -53,7 +56,18 @@ def import_article(payload: ImportArticle, background: BackgroundTasks):
 
 @router.get("/api/articles/{article_id}")
 def detail(article_id: str):
-    return get_article(article_id)
+    article = get_article(article_id)
+    if article["status"] != "Process":
+        from ..manual_materials import sync
+        result = []
+        try:
+            launch(article_id, lambda: result.append(sync(get_article(article_id))))
+            article = result[0]
+        except HTTPException as exc:
+            if exc.status_code != 409:
+                raise
+    article["storage_path"] = str(store.folder(article_id))
+    return article
 
 
 @router.patch("/api/articles/{article_id}")
@@ -79,5 +93,7 @@ def versions(article_id: str):
     get_article(article_id)
     return [
         dict(**json.loads(p.read_text(encoding="utf-8")), version_id=p.stem)
-        for p in sorted((store.folder(article_id) / "versions").glob("*.json"), reverse=True)
+        for p in sorted(
+            (store.folder(article_id) / "versions").glob("*.json"), reverse=True
+        )
     ][:30]

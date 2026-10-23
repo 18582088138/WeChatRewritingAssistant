@@ -13,7 +13,7 @@ export function renderSettings() {
       <h2>后端服务</h2>
       <p>连接你的内容工作台，文章、素材和修订保存在这里。</p>
       <span class="pill ${state.online ? '' : 'warning'}">${state.online ? '已连接' : '未连接'}</span>
-      <p class="hint">本地使用当前地址。在线前端需连接 HTTPS 后端；同一局域网的手机可访问电脑地址。</p>
+      <p class="hint">双击 Start.cmd 启动完整应用，界面和 API 使用同一地址。手机可使用电脑的局域网地址。</p>
       </div>
       <div class="panel">
       <form id="connection-form">

@@ -1,91 +1,88 @@
 # Signal Studio · WeChatRewritingAssistant
 
-一个本地优先的中文科技内容工作台：从文章或论文链接出发，研究多个来源，生成原创解读，独立审稿，编辑图文并准备各平台草稿。
+本地中文科技内容工作台：从新闻或论文链接出发，抓取图文视频、检索参考资料、融合生成含配图的原创解读，独立审稿、人工修订，并准备多平台草稿。
 
-GUI 已按 [taste-skill](https://github.com/leonxlnx/taste-skill) 的应用界面规范优化，使用 Editorial greeting / Open plane 方向。具体设计取舍、检查结果与截图自评见 [GUI 优化记录](docs/gui-design.md)。支持文章、设置与单篇编辑的 hash 入口，刷新后恢复当前页面。
+前后端代码分离，完整应用由同一个 Python 服务提供 GUI、API 和存储。本轮只做本地验收；后续部署选择支持 Python 的统一平台。
 
-## 启动
+## 一键安装和启动
+
+Windows 本机已有 conda/Miniforge 时：
+
+1. 双击 [Install.cmd](Install.cmd)，使用或创建 xkd_env_py312 并安装依赖；保留已有 .env。
+2. 在 .env 配置 DeepSeek 等模型密钥，已有配置可直接使用。
+3. 双击 [Start.cmd](Start.cmd)，同时启动前端和后端，打开 http://127.0.0.1:8000。
+
+再次启动会检测已有服务。终端入口：
 
 ```powershell
-conda create -n xkd_env_py312 python=3.12 pip -y
-conda run -n xkd_env_py312 python -m pip install -r requirements.txt
-# 已有 .env 时不要覆盖；新环境从模板创建并填写模型密钥
-Copy-Item .env.example .env
-conda run --no-capture-output -n xkd_env_py312 python -m uvicorn backend.app:app --host 127.0.0.1 --port 8000
+conda run --no-capture-output -n xkd_env_py312 python scripts/launch.py
 ```
 
-打开 http://127.0.0.1:8000 。也可执行 `powershell -ExecutionPolicy Bypass -File scripts/start.ps1`。同一局域网手机操作使用 `scripts/start.ps1 -Lan`，访问电脑的局域网 IP 和 8000 端口，按需配置 Windows 防火墙与 `.env` 中的 `CORS_ORIGINS`。本机默认不开放外网；对外部署时设置 `APP_TOKEN` 并启用 HTTPS。令牌在界面“设置与连接”填写，只保存在浏览器当前会话。
-
-代理可在 `.env` 中设置 `HTTP_PROXY`、`HTTPS_PROXY`、`NO_PROXY`。`HF_ENDPOINT` 为预留配置，当前没有下载本地 Hugging Face 模型。API 密钥从后端读取，不返回浏览器，不提交 Git。
+Linux 提供 install.sh/start.sh，本轮实测环境是 Windows/conda。服务地址、端口和自动打开浏览器行为在 config/app.json。手机同局域网访问可把 host 改为 0.0.0.0 并重启，通过电脑局域网 IP 和相同端口打开。
 
 ## 工作流程
 
-1. 导入公开报道、模型发布页面或 PDF 论文。需要登录、反爬或动态渲染的来源可粘贴原文，仍保留原始链接。
-2. 文章目录以 New / Process / Done 显示状态。选择平台、目标字数、风格和 DeepSeek / OpenRouter，开启关联搜索或手动补充来源。
-3. 写作 Agent 提炼来源，重新组织论述、标注 `[S1]` 等事实出处，输出标题、正文、关键词和一句话总结；审稿 Agent 核对证据、技术细节、排版、自然表达和原创性风险。
-4. 一轮写作和一轮审稿构成一次生成，两个阶段分别落盘。按审稿意见修改会开启新一轮写作和复审。Done 表示本轮完成，高风险意见仍会显示“待人工确认”。
-5. 编辑 Markdown 并保存，或选中段落后局部重写。修改正文会使旧审稿失效，避免旧反馈被误用于新版本。来源与素材页支持本地上传、Pixabay 图库检索（需 `PIXABAY_API_KEY`）、授权和水印确认，编辑页选择素材插入或替换图片。
-6. 生成 1080×1440 PNG 组图，可下载文案、排版 HTML、来源与已确认素材的 ZIP 包。图片是本地排版生成，不需要图片生成 API。
-7. 选择平台准备草稿：公众号真正写入草稿箱；X、小红书、微博生成图文包，由用户在平台保存草稿和最终发布。
+1. 导入公开文章/论文链接，正文、图片、视频按原文标题和资源类型落盘；原文 Markdown 开头保留链接。
+2. 搜索新闻发布日期前后 3 天的强关联材料。日期窗口可配置，直接相关的旧论文/基础科普标为背景，用户补充标为人工资料。
+3. 写作 Agent 融合资料包，生成标题、摘要、关键词、含配图及 [S1] 出处的原创稿；审稿 Agent 检查技术细节、证据、排版、原创性和语言表达。一次写作与一次审稿分别保存。
+4. 人工编辑、按反馈修改或选区重写。PC 参考浮窗支持跨来源选择多段，调用 LLM 融合后插入正文；图片/视频可从资料库插入。GUI 上传和直接复制 manual 文件夹均可补充素材。
+5. 查看手机分页预览，生成 1080×1440 多页组图，核对来源媒体的授权/水印。待确认媒体可用于内部草稿；导出只包含已确认素材。
+6. 准备平台草稿，最终发布自行在平台操作。New/Process/Done 表示处理阶段，Done 仍可能有待人工处理的审稿意见。
 
-## 已实现的平台边界
+## 文档
 
-| 平台 | 本项目行为 | 必要配置 |
-| --- | --- | --- |
-| 微信公众号 | stable_token → 素材上传 → draft/add，仅新增草稿 | `.env` 的 `WECHAT_APP_ID`、`WECHAT_APP_SECRET`；公众号接口权限和 IP 白名单；界面配置作者与可选 `thumb_media_id` |
-| X | 保存适配文案与素材包，打开创作平台自行存草稿 | 暂无需 API key；长文需按账号权限与实际限额处理 |
-| 小红书 | 导出 3:4 图文组图和文案，手动存草稿 | 暂无需 API key |
-| 微博 | 导出图文包，手动存草稿 | 暂无需 API key |
+| 文档 | 内容 |
+| --- | --- |
+| [产品设计](docs/product-design.md) | 页面、流程、状态、研究策略、图文和验收范围 |
+| [接口文档](docs/api-reference.md) | API 清单、对象、选区位置、示例和错误 |
+| [使用手册](docs/user-guide.md) | 安装、编辑、素材、手机、配置和故障处理 |
+| [语言风格调参指南](docs/prompt-style-guide.md) | 正负例、控制变量、固定样本与迭代方法 |
+| [应用架构](docs/architecture.md) | 模块边界、统一运行、标题归档与规模约束 |
+| [本地产品实测](docs/local-product-validation.md) | 本轮真实 E2E、GUI 和素材验证结果 |
+| [GUI 设计记录](docs/gui-design.md) | taste-skill 方向、检查与视觉取舍 |
 
-未找到可统一使用的官方远程草稿接口的平台不会显示“远程草稿写入成功”。未实现浏览器登录自动化，也不调用直接发帖接口。公众号真实投递需要用户账号配置，未配置时返回清晰失败原因；不会伪造成功。
+交互 API 文档：http://127.0.0.1:8000/docs；完整契约：http://127.0.0.1:8000/openapi.json。
 
-## 存储与接口
+## 配置和数据
 
-前后端按职责分层，入口、路由、页面、编辑操作与样式均已模块化。目录结构、依赖规则、文件规模限制及独立运行方式见 [应用架构](docs/architecture.md)。
+config/app.json、research.json、generation.json、platforms.json 管理应用、检索、两个 Agent 基础参数和图文分页。config/prompts 保存写作、审稿、统一语言风格、选区融合和压缩提示词。生成保存配置指纹及 config-history 快照。API 密钥仅放 .env，不返回浏览器、不提交 Git。
 
 ```text
-data/
-  settings.json
-  articles/<id>/
-    article.json          # 状态、文案、审稿、素材和投递记录
-    draft.md              # 当前正文
-    versions/*.json       # 每阶段及人工保存的历史版本
-    materials/source-N/text/  # 原始 HTML/PDF、正文与来源元数据
-    materials/source-N/images/
-    materials/source-N/videos/
-    materials/local/images/
-    generated/cards-rN/   # 本地生成组图
-    exports/              # 平台图文包
+data/articles/原文标题/（同名追加短 ID）
+  article.json                 当前状态和文案
+  source/原文标题/             标题 Markdown，text/images/videos
+  references/参考文章标题/     标题 Markdown，text/images/videos
+  manual/images,videos,texts/   手动补充资料库
+  drafts/                      当前稿及标题修订稿
+  versions/                    每阶段/人工编辑快照
+  generated/                   分页组图、信息图、模型尝试稿
+  config-history/              使用过的配置副本
+  exports/                     平台图文包
 ```
 
-FastAPI 接口文档：http://127.0.0.1:8000/docs 。文件写入使用临时文件替换；正文编辑带修订号检查；同一文章的任务互斥；服务重启后中断任务可重新启动。当前任务在单进程内执行，请使用单个 Uvicorn worker，后续生产部署可以迁移数据库和任务队列。
+旧 UUID 目录启动时备份并迁移，保留旧素材以维持历史版本引用。article.json 是当前文案状态；修改落盘 Markdown 不会自动回写应用，修稿请通过 GUI 保存。当前使用单进程任务锁与文件存储，运行一个 Uvicorn worker。
 
-来源抓取支持公开 HTML 与 PDF，关联检索尽力从搜索结果提取公开页面，可能受网络、搜索服务、反爬、付费墙影响。检索失败会保留已有来源并记录提示，可手动补充一手资料链接。HTML 不具备动态浏览器渲染能力。来源图片和直接视频链接按类型落盘，视频限 25 MB，不支持受保护流媒体或 DRM。来源图片的授权、水印由人工确认；没有自动视觉鉴权，也不能保证所有来源图片无水印。
+## 平台能力边界
 
-目标字数是对模型的写作约束，超过宽松上限会返回失败，最终字数在编辑页可见；不同平台字数、账号能力和审核规则变化，需要用户发布前核对。审稿依据抓取到的来源，不代表独立实验或审核通过保证。
+| 平台 | 当前行为 |
+| --- | --- |
+| 微信公众号 | 配置账号与接口权限后调用草稿接口，仅新增草稿 |
+| X / 小红书 / 微博 | 准备本地图文素材包，由用户手动保存到平台草稿 |
 
-## GitHub Pages
+没有直接发布接口。公众号远程投递本轮未使用真实账号验收，素材包导出不代表远程草稿写入。待确认图片会阻止公众号草稿投递。
 
-`.github/workflows/pages.yml` 将 `web/` 部署到 GitHub Pages。仓库 Settings → Pages 的 Source 选择 GitHub Actions，然后推送 main 或手动运行工作流。
+抓取支持公开 HTML/PDF、图片、直接视频和播放器发现；不支持通用动态渲染、登录/验证码处理或受保护流媒体。下载失败与未纳入参考的原因保留。图片水印/授权需人工确认；审稿不代表独立技术实验或平台审核通过。
 
-Pages 只能托管静态前端，不能运行 Python、保存服务器文件或安全存放 API 密钥。在线前端的“设置与连接”中填写独立部署的 HTTPS 后端地址，并在后端配置 Pages 域名的 `CORS_ORIGINS`。后端未连接时可以查看界面示例，示例明确标注，不代表真实生成内容。HTTPS Pages 不能连接普通 HTTP 后端；局域网使用本地后端自带前端。
-
-## 验证
-
-搜索与抓取已进行多轮真实图文、视频和论文验证，结果、访问限制与自定义链接复测方式见 [真实搜索与抓取验证](docs/research-validation.md)。
-
-用户提供的两篇公众号文章和一篇智东西文章也已进行真实 DeepSeek 与 Chrome 的完整链路测试，覆盖按审稿意见修改、段落重写、配图替换、组图和四平台素材包导出，见 [三篇文章 E2E 实测](docs/user-e2e-validation.md)。流程通过与文案审稿结论分别记录，平台素材包导出不代表外部草稿箱写入成功。
+## 验证和后续部署
 
 ```powershell
-conda run -n xkd_env_py312 python -m pytest -q
+conda run --no-capture-output -n xkd_env_py312 python -m pytest -q
+conda run --no-capture-output -n xkd_env_py312 python scripts/check_architecture.py
+# 会使用真实网络和模型额度
+conda run --no-capture-output -n xkd_env_py312 python scripts/verify_user_e2e.py --output test-results/product-revision-e2e --resume --revise
+conda run --no-capture-output -n xkd_env_py312 python scripts/verify_product_ui.py
 ```
 
-测试覆盖来源地址隔离、访问令牌、HTML 清理、生成审稿落盘、版本冲突、局部重写、素材确认、组图、导出和模型失败恢复，模型请求使用替身，避免消耗密钥额度。
+浏览器验证需 requirements-dev.txt 和本机 Chrome。源码单文件限制为 350 行/16 KB，检查模块依赖与前端循环；测试数据、截图、密钥不提交。
 
-本次开发验证：8 项后端测试通过，桌面和 390px 手机浏览器完成目录、设置、编辑保存、预览、版本、组图和下载检查，无脚本错误。真实 DeepSeek 验证使用历史论文 [DeepSeek-V3 Technical Report](https://arxiv.org/abs/2412.19437)，已完成抓取、写作、独立审稿并保存，结果 88 分。验证样稿保存在本地文章目录，明确说明是历史论文，不代表最新要闻。600 字短篇输出曾超限，已加压缩重试和超限保护，最终篇幅仍需人工核对。
-
-浏览器验证可安装 `requirements-dev.txt` 后运行 `scripts/verify_browser.py`。`scripts/verify_editor.py` 使用真实验证样稿，`scripts/verify_live.py` 会消耗模型调用额度并把结果存到 `test-results/live-data/`。截图和验证数据均不提交 Git。
-
-GitHub Actions 和 Pages 已配置完成，测试及部署工作流均成功。线上地址：[Signal Studio](https://18582088138.github.io/WeChatRewritingAssistant/)。已实测全部 39 个前端文件与本地内容一致、正确 MIME 类型、桌面/平板/手机导航与设置；详情和复测命令见 [Pages 部署验证](docs/pages-deployment-validation.md)。Pages 托管静态前端，联网抓取、Agent 和文件存储仍需要连接 Python 后端。
-
-接口参考：[DeepSeek JSON Output](https://api-docs.deepseek.com/guides/json_mode)、[微信公众号开发文档](https://developers.weixin.qq.com/doc/service/)、[X API 文档](https://docs.x.com/)。应用定位为有来源的原创整理与解读，保留事实出处和人工确认流程。
+GitHub Pages 的旧静态 GUI 部署保留作历史记录；本轮移除 push 自动部署，只保留手动触发，不进行线上调试。完整应用后续部署到 Python 平台。Dockerfile/compose.yaml 是统一打包起点，本轮未构建验收。先前实测可参考 [搜索抓取记录](docs/research-validation.md)、[三篇旧版 E2E](docs/user-e2e-validation.md) 和 [Pages 历史记录](docs/pages-deployment-validation.md)。

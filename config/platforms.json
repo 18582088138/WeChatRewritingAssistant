@@ -1,0 +1,8 @@
+{
+  "card_width": 1080,
+  "card_height": 1440,
+  "card_chars": 240,
+  "preview_chars": 650,
+  "minimum_font_size": 26,
+  "include_pending_media_in_draft": true
+}

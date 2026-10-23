@@ -38,10 +38,10 @@ export async function saveDraft(silent = false) {
 export function options() {
   const previous = state.current.options || {};
   return {
-    word_count: Number($('#word-count')?.value || previous.word_count || 1200),
-    style: $('#writing-style')?.value || previous.style || '专业、有观点、自然简洁',
+    word_count: Number($('#word-count')?.value || previous.word_count || state.config?.generation.word_count || 1800),
+    style: $('#writing-style')?.value || previous.style || state.config?.generation.style || '专业、自然、克制的中文科技解读',
     platform: $('#target-platform')?.value || previous.platform || 'wechat',
-    provider: $('#model-provider')?.value || previous.provider || 'deepseek',
+    provider: $('#model-provider')?.value || previous.provider || state.config?.generation.provider || 'deepseek',
     research: $('#research')?.checked ?? true,
     related_urls: ($('#related-urls')?.value || '')
       .split('\n')
