@@ -12,6 +12,7 @@ from pathlib import Path
 import httpx
 
 from pages_browser import check_browser
+from pages_actions import check_workflows
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO = "18582088138/WeChatRewritingAssistant"
@@ -87,32 +88,7 @@ def main():
                 sha = subprocess.check_output(
                     ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
                 ).strip()
-                response = client.get(
-                    "https://api.github.com/repos/" + REPO + "/actions/runs?per_page=30"
-                )
-                response.raise_for_status()
-                runs = response.json()["workflow_runs"]
-                checked = []
-                for name in ["Test", "Deploy frontend to GitHub Pages"]:
-                    matching = [
-                        run
-                        for run in runs
-                        if run["head_sha"] == sha and run["name"] == name
-                    ]
-                    assert matching, "No workflow run for current commit: " + name
-                    run = matching[0]
-                    assert run["conclusion"] == "success", (
-                        name + ": " + str(run["conclusion"])
-                    )
-                    checked.append(
-                        dict(
-                            name=name,
-                            sha=sha,
-                            conclusion=run["conclusion"],
-                            url=run["html_url"],
-                        )
-                    )
-                report["workflows"] = checked
+                report["workflows"] = check_workflows(client, REPO, sha)
         report["browser"] = check_browser(
             args.url, output, args.browser_executable, args.api_base
         )

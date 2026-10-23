@@ -2,7 +2,7 @@
 
 测试日期：2026-10-23；线上地址：[Signal Studio 科技内容工作台](https://18582088138.github.io/WeChatRewritingAssistant/)。测试访问实际 GitHub Pages 页面，没有使用本地前端替代，也没有模拟网络响应。
 
-此前首次配置 Pages 时的权限问题已解除。提交 `4641bb2` 的 [测试工作流](https://github.com/18582088138/WeChatRewritingAssistant/actions/runs/39966755793) 和 [Pages 部署工作流](https://github.com/18582088138/WeChatRewritingAssistant/actions/runs/39966755915) 均成功；随后将本次验证脚本与报告提交，继续验证自动部署。
+此前首次配置 Pages 时的权限问题已解除。提交 `4641bb2` 的测试和部署均成功；本次新增部署测试后的 `d02f6e6` 也已自动完成 [测试工作流](https://github.com/18582088138/WeChatRewritingAssistant/actions/runs/39967647770)（25 秒）和 [Pages 部署](https://github.com/18582088138/WeChatRewritingAssistant/actions/runs/39967647500)（27 秒）。
 
 ## 线上检查
 
@@ -41,3 +41,5 @@ conda run --no-capture-output -n xkd_env_py312 python scripts/verify_pages.py --
 ```
 
 检查不调用写作模型，不导入真实来源，不投递平台草稿，也不执行公开发布。浏览器脚本与线上 HTTP/工作流检查分为独立模块，符合项目源码规模约束。Linux 可先运行 `python -m playwright install chromium`；其他浏览器路径可用 `--browser-executable` 指定。
+
+公共 GitHub API 曾在共享代理下返回 HTTP 403 限流。脚本此时读取 GitHub 官方 Actions 页面中的结构化运行记录，核对完整提交 SHA 与 success 结论，并在报告记录证据渠道；不会把 API 限流误报为部署失败。
