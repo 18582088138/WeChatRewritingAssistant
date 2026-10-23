@@ -1,0 +1,305 @@
+@media (max-width: 600px) {
+  :root {
+    --pad: 16px;
+  }
+  .topbar {
+    min-height: 52px;
+  }
+  .breadcrumb {
+    font-size: 13px;
+  }
+  .breadcrumb > span {
+    margin: 0 4px;
+  }
+  .connection {
+    font-size: 11px;
+    gap: 5px;
+  }
+  .topbar-right > .icon-button {
+    width: 36px;
+    height: 44px;
+  }
+  .sidebar {
+    padding: 72px 20px 24px;
+  }
+  main {
+    padding-top: 20px;
+  }
+  .page-heading {
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .page-heading h1 {
+    font-size: 23px;
+    margin-bottom: 8px;
+  }
+  .page-heading p {
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .page-heading > .button {
+    padding: 10px 12px;
+    min-height: 44px;
+    font-size: 13px;
+  }
+  .page-heading > .button .ui-icon {
+    width: 16px;
+  }
+  .stats {
+    padding: 16px 0;
+    margin-bottom: 24px;
+  }
+  .stat {
+    padding: 0 12px;
+    align-items: center;
+    gap: 6px;
+  }
+  .stat-label {
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .stat-value {
+    font-size: 24px;
+  }
+  .stat-value small {
+    display: none;
+  }
+  .library-workflow {
+    display: none;
+  }
+  .section-title {
+    margin-bottom: 12px;
+  }
+  .section-title h2 {
+    font-size: 16px;
+  }
+  .section-title > span {
+    font-size: 11px;
+  }
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .tabs {
+    justify-content: space-between;
+  }
+  .tab {
+    padding: 6px 10px;
+    min-height: 36px;
+    font-size: 12px;
+    gap: 5px;
+  }
+  .search {
+    width: 100%;
+  }
+  .search input {
+    min-height: 40px;
+    font-size: 13px;
+  }
+  .search > .ui-icon {
+    top: 12px;
+  }
+  .article-grid,
+  .article-grid[data-count="1"] {
+    grid-template-columns: 1fr;
+  }
+  .article-grid[data-count="1"] .article-card.has-cover {
+    display: flex;
+  }
+  .article-grid[data-count="3"] > :last-child {
+    grid-column: auto;
+  }
+  .card-cover,
+  .article-grid[data-count="1"] .card-cover {
+    height: 148px;
+    min-height: 0;
+  }
+  .card-body {
+    padding: 20px;
+  }
+  .card-body h3 {
+    min-height: 0;
+    font-size: 16px;
+  }
+  .card-body p {
+    font-size: 14px;
+  }
+  .article-evidence {
+    flex-direction: row;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    font-size: 12px;
+  }
+  .status {
+    font-size: 12px;
+  }
+  .article-action {
+    font-size: 13px;
+    min-height: 32px;
+  }
+  .demo-badge {
+    align-items: flex-start;
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+  .demo-badge button {
+    min-height: 32px;
+  }
+  .empty-state {
+    text-align: left;
+    padding: 28px 20px;
+  }
+  .empty-state .section-actions {
+    justify-content: flex-start;
+  }
+  .empty-state .button {
+    min-height: 44px;
+  }
+  .editor-head h1 {
+    font-size: 21px;
+  }
+  .editor-head .section-actions {
+    width: 100%;
+  }
+  .editor-head .section-actions .button {
+    flex: 1;
+    min-height: 44px;
+  }
+  .back-link {
+    min-height: 44px;
+    margin-bottom: 12px;
+  }
+  .panel {
+    padding: 20px 16px;
+  }
+  .panel-title {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .editor-tabs {
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .editor-tab {
+    min-height: 44px;
+    padding-bottom: 12px;
+    font-size: 12px;
+  }
+  .editor-title {
+    font-size: 19px;
+  }
+  .editor-body {
+    font-size: 15px;
+    min-height: 400px;
+  }
+  .editor-aside {
+    display: block;
+  }
+  .editor-aside > .panel {
+    margin-bottom: 16px;
+  }
+  .editor-toolbar .button {
+    flex: 1 1 calc(50% - 8px);
+    min-height: 44px;
+    font-size: 12px;
+    padding: 8px;
+  }
+  .editor-toolbar #save-state {
+    flex: 1 0 100%;
+  }
+  .button {
+    min-height: 44px;
+  }
+  .editor-toolbar .ui-icon {
+    width: 15px;
+    height: 15px;
+  }
+  label {
+    font-size: 14px;
+  }
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+    font-size: 16px;
+  }
+  .hint {
+    font-size: 12px;
+  }
+  .preview-prose {
+    font-size: 15px;
+  }
+  .preview-prose h1 {
+    font-size: 22px;
+  }
+  .asset-grid {
+    gap: 12px;
+  }
+  .asset-content {
+    padding: 12px;
+  }
+  .asset-tile img,
+  .asset-tile video {
+    height: 180px;
+  }
+  .asset-tile label,
+  .asset-tile p {
+    font-size: 12px;
+  }
+  .asset-tile input[type="text"] {
+    font-size: 16px;
+  }
+  .asset-tile .button {
+    font-size: 12px;
+  }
+  .platform-select {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .platform-select label {
+    min-height: 44px;
+    font-size: 14px;
+  }
+  .settings-platform {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .platform-text {
+    min-width: 160px;
+  }
+  .platform-text strong {
+    font-size: 14px;
+  }
+  .delivery-row {
+    flex-wrap: wrap;
+  }
+  .delivery-row > .platform-logo {
+    display: none;
+  }
+  .version {
+    flex-wrap: wrap;
+  }
+  .version .button {
+    min-height: 44px;
+  }
+  dialog {
+    padding: 24px;
+  }
+  .modal-heading h2 {
+    font-size: 21px;
+  }
+  #toast {
+    left: 50%;
+    width: max-content;
+    font-size: 13px;
+  }
+  footer {
+    font-size: 11px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}

@@ -1,0 +1,88 @@
+/* Editorial greeting / open plane. 1100px = 12 × 77px + 11 × 16px.
+   Peer article cards use 4/4/4 spans; a lone article uses an 8-column reading measure. */
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap");
+:root {
+  --ground: #f3f5f4;
+  --surface: #fff;
+  --raised: #eaeeec;
+  --active: #e2e7e4;
+  --border: #e1e6e3;
+  --rule: #edf0ee;
+  --control: #c6ceca;
+  --ink: #22352d;
+  --muted: #59685f;
+  --faint: #647168;
+  --accent: #217a61;
+  --primary: #24382e;
+  --positive-bg: #e5f2e9;
+  --positive-ink: #285b3b;
+  --warning-bg: #faf1df;
+  --warning-ink: #755318;
+  --negative-bg: #f8e9e5;
+  --negative-ink: #8e392e;
+  --radius: 16px;
+  --gap: 16px;
+  --pad: 32px;
+  --sidebar: 240px;
+  --font: "DM Sans", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--ground);
+  font: 14px/1.6 var(--font);
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+button:disabled {
+  cursor: not-allowed;
+  background: var(--raised);
+  color: var(--muted);
+  border-color: var(--control);
+}
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+button:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+::selection {
+  background: #cce4d8;
+  color: var(--ink);
+}
+[hidden] {
+  display: none !important;
+}
+.ui-icon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  vertical-align: middle;
+}

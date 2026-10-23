@@ -41,6 +41,8 @@ conda run --no-capture-output -n xkd_env_py312 python -m uvicorn backend.app:app
 
 ## 存储与接口
 
+前后端按职责分层，入口、路由、页面、编辑操作与样式均已模块化。目录结构、依赖规则、文件规模限制及独立运行方式见 [应用架构](docs/architecture.md)。
+
 ```text
 data/
   settings.json

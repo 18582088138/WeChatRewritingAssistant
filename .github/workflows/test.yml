@@ -10,3 +10,8 @@ jobs:
           python-version: '3.12'
       - run: pip install -r requirements.txt
       - run: python -m pytest -q
+      - run: python scripts/check_architecture.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: find web -name '*.js' -exec node --check {} \;

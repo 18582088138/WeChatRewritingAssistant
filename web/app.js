@@ -1,169 +1,74 @@
 import { icon } from './icons.js';
-const $ = (s, root = document) => root.querySelector(s);
-const $$ = (s, root = document) => [...root.querySelectorAll(s)];
-const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const state = {view:'library', filter:'All', query:'', articles:[], current:null, tab:'edit', settings:null, online:false, dirty:false, selection:null, demo:false};
-const platformNames = {wechat:'微信公众号', x:'X', xiaohongshu:'小红书', weibo:'微博'};
-const statusNames = {New:'待创作',Process:'处理中',Done:'已完成'};
-let blobUrls = [], pollBusy = false;
-let apiBase = localStorage.getItem('signal.api') || (location.hostname.endsWith('github.io') ? '' : location.origin);
-let token = sessionStorage.getItem('signal.token') || '';
+import { $, $$ } from './core/dom.js';
+import { connectionConfig } from './core/api.js';
+import { closeNavigation, toggleNavigation } from './core/navigation.js';
+import { setView, openArticle, boot } from './application/router.js';
+import { render, refresh } from './application/workspace.js';
+import { bindImportDialog } from './features/import.js';
+import { saveDraft } from './features/editor/draft.js';
+import { bindAssetDialog } from './features/editor/assets.js';
+import { renderLibrary } from './pages/library.js';
+import { renderEditor } from './pages/editor.js';
+import { state } from './core/state.js';
+import { configureRuntime } from './core/runtime.js';
 
-function toast(message) { $('#toast').textContent = message; $('#toast').classList.add('visible'); clearTimeout(toast.timer); toast.timer = setTimeout(()=>$('#toast').classList.remove('visible'),4500); }
-function authHeaders() { return token ? {Authorization:'Bearer '+token} : {}; }
-async function api(path, options={}) {
-  if (!apiBase) throw new Error('请在设置中配置后端地址。GitHub Pages 提供前端，AI 与文件服务由 Python 后端运行。');
-  const headers = {...authHeaders(), ...(options.body && !(options.body instanceof FormData) ? {'Content-Type':'application/json'} : {}), ...options.headers};
-  let response;
-  try { response = await fetch(apiBase.replace(/\/$/,'') + path, {...options,headers}); } catch { throw new Error('无法连接后端，请检查服务地址、HTTPS 与网络'); }
-  if (!response.ok) { const data = await response.json().catch(()=>({})); throw new Error(typeof data.detail==='string' ? data.detail : `请求失败（${response.status}），请检查输入`); }
-  return response.headers.get('content-type')?.includes('json') ? response.json() : response.blob();
-}
-function date(value, detailed=false) { return new Date(value).toLocaleString('zh-CN', {timeZone:'Asia/Shanghai',month:'2-digit',day:'2-digit', ...(detailed?{hour:'2-digit',minute:'2-digit'}:{})}); }
-function connection() { $('#connection-dot').style.background = state.online ? '#77ab67' : '#c7ac7a'; $('#connection-text').textContent=state.online?'后端已连接':'后端未连接'; }
-function setView(view) { if (state.dirty && !confirm('正文有未保存修改，离开会丢失这些修改。确定离开？')) return; history.replaceState(null,'','#'+view); state.dirty=false; state.view=view; state.current=null; state.tab='edit'; $$('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.view===view)); $('#crumb').textContent={library:'文章工作台',materials:'素材库',deliveries:'草稿投递',settings:'设置与连接'}[view]; closeNavigation(); render(); }
-function heading(context,title,description,action='') { return `<div class="page-heading"><div><h1>${title}</h1><p>${description}</p></div>${action}</div>`; }
-function empty(title,text,action='') { return `<div class="empty-state"><h3>${title}</h3><p>${text}</p>${action}</div>`; }
-function render() {
-  document.body.dataset.view = state.current ? 'editor' : state.view; blobUrls.forEach(URL.revokeObjectURL); blobUrls=[]; if(state.current) renderEditor(); else ({library:renderLibrary,materials:renderMaterials,deliveries:renderDeliveries,settings:renderSettings}[state.view])(); $('#nav-count').textContent=state.articles.length; }
-
-const demoArticles = [
-  {title:'从模型到行动：具身智能真正需要解决什么？',summary:'理解机器人从感知、决策到执行的技术链路，找到值得持续关注的行业信号。',keywords:['具身智能','行业观察'],status:'Done',cover:'Embodied AI'},
-  {title:'读懂大模型发布：参数之外，哪些指标更重要',summary:'从评测方法、推理成本和实际使用场景出发，建立一套读懂新模型的框架。',keywords:['大模型','技术解读'],status:'Process',cover:'Beyond LLMs'},
-  {title:'AI 硬件的下一步：让算力走到用户身边',summary:'芯片、终端和软件生态共同影响体验，值得先把产品的真实能力讲清楚。',keywords:['AI 硬件','产业洞察'],status:'New',cover:'AI × Hardware'},
-];
-function renderLibrary() {
-  const articles = state.demo ? demoArticles.map((a,i)=>({...a,id:'demo-'+i,created_at:'2026-10-23T08:00:00Z',sources:[],assets:[],body:'',stage:statusNames[a.status]})) : state.articles;
-  const counts = s => articles.filter(a=>s==='All'||a.status===s).length;
-  const visible = articles.filter(a=>(state.filter==='All'||a.status===state.filter)&& (a.title+' '+a.keywords.join(' ')).toLowerCase().includes(state.query.toLowerCase()));
-  const needsAttention = articles.filter(a=>a.status==='New'||a.error||a.review?.issues.some(i=>i.severity==='high'));
-  const finding = state.demo ? '示例内容 · 用于预览界面，不会保存到你的文章目录。' : !state.online ? '连接后端后，可导入来源并开始创作。' : needsAttention.length ? `${needsAttention.length} 篇内容等待处理，打开文章继续创作。` : articles.length ? '文案已保存。打开文章，检查来源并继续编辑。' : '从一篇报道或论文开始，整理你的第一篇行业解读。';
-  const lead = needsAttention[0] || articles[0];
-  $('#main').innerHTML = heading('','文章工作台',finding,`<button class="button primary" id="new-article">${icon('plus')}导入文章</button>`) +
-    `<div class="stats" aria-label="文章状态统计">${[['全部文章','All'],['待创作','New'],['处理中','Process'],['已完成','Done']].map(([label,s])=>`<button class="stat ${state.filter===s?'selected':''}" data-filter="${s}"><span class="stat-label">${label}</span><span class="stat-value">${counts(s)}<small>篇</small></span></button>`).join('')}</div>
-    <div class="library-workflow"><div class="workflow-copy"><strong>从来源到草稿，每一步可核对</strong><p>研究来源 → 原创撰写 → 独立审稿 → 人工确认</p></div>${lead?`<button class="button secondary" data-article="${lead.id}">${icon('edit')}${lead.status==='New'?'开始创作':'继续编辑'}</button>`:`<span class="workflow-note">保留出处与修订记录</span>`}</div>
-    <div class="section-title"><h2>我的文章 <span>${visible.length} 篇${state.query?'匹配内容':''}</span></h2><div class="section-actions"><span class="hint">最近更新优先</span>${!state.demo?'<button class="sample-link" id="show-demo">查看界面示例</button>':''}</div></div>
-    ${state.demo?'<div class="demo-badge">界面示例，不代表真实抓取或生成结果。<button id="exit-demo">退出示例</button></div>':''}
-    <div class="toolbar"><div class="tabs" aria-label="文章状态筛选">${[['All','全部'],['New','待创作'],['Process','处理中'],['Done','已完成']].map(([s,label])=>`<button class="tab ${state.filter===s?'active':''}" data-filter="${s}" aria-pressed="${state.filter===s}">${label}<span>${counts(s)}</span></button>`).join('')}</div><label class="search">${icon('search')}<input id="search" placeholder="搜索标题或关键词" value="${escape(state.query)}" aria-label="搜索文章"></label></div>
-    <div class="article-grid" data-count="${visible.length}">${visible.length?visible.map((a,i)=>articleCard(a,i)).join(''):empty(state.query?'没有匹配的内容':state.filter!=='All'?'当前没有'+statusNames[state.filter]+'的文章':'导入你的第一个行业信号',state.query?'试试其他关键词，或切换文章状态。':state.filter!=='All'?'切换到全部文章，或导入新的来源。':'保存原始资料，整理核心事实，再把你的观点写出来。',state.query||state.filter!=='All'?'':'<div class="section-actions"><button class="button primary" id="empty-import">导入第一篇文章</button></div>')}</div>`;
-  $('#new-article').onclick=openImport; $('#empty-import')?.addEventListener('click',openImport); $('#show-demo')?.addEventListener('click',()=>{state.demo=true;render();}); $('#exit-demo')?.addEventListener('click',()=>{state.demo=false;render();});
-  $$('[data-filter]').forEach(b=>b.onclick=()=>{state.filter=b.dataset.filter;renderLibrary();}); $('#search').oninput=e=>{const at=e.target.selectionStart;state.query=e.target.value;renderLibrary();$('#search').focus();$('#search').setSelectionRange(at,at);};
-  $$('[data-article]').forEach(el=>el.onclick=()=>openArticle(el.dataset.article)); hydrateImages();
-}
-function articleCard(a,index) {
-  const cover = a.assets.find(x=>x.type==='image'&&x.approved&&!x.id.startsWith('card-'));
-  const key = a.keywords[0] || '行业要闻';
-  const stage = a.error ? '处理失败，可重试' : a.review?.issues.some(i=>i.severity==='high') ? '待人工确认' : a.status==='Process' ? a.stage : statusNames[a.status];
-  const action = a.status==='New'?'开始创作':a.status==='Process'?'查看进度':'编辑文案';
-  const host = a.url ? new URL(a.url).hostname.replace(/^www\./,'') : '界面示例';
-  return `<article class="article-card ${cover?'has-cover':'text-card'}" data-article="${a.id}" tabindex="0" role="button" aria-label="打开 ${escape(a.title)}">${cover?`<div class="card-cover"><img data-asset="${a.id}/${cover.id}" alt="${escape(cover.alt)}" loading="lazy"></div>`:''}<div class="card-body"><div class="card-tags"><span class="tag">${escape(key)}</span><time class="card-date">${date(a.updated_at||a.created_at)}</time></div><h3>${escape(a.title)}</h3><p>${escape(a.summary||a.error||'原始来源已导入。选择篇幅与风格，开始整理这条行业信号。')}</p><div class="article-evidence"><span>${escape(host)}</span><span>${a.sources.length} 个来源 · ${a.body.length} 字</span></div><div class="card-bottom"><span class="status ${a.error?'error':a.status}"><i></i>${escape(stage)}</span><span class="article-action">${action}${icon('arrow')}</span></div></div></article>`;
-}
-async function hydrateImages(root=document) {
-  await Promise.allSettled($$('[data-asset]',root).map(async el=>{const [article,id]=el.dataset.asset.split('/');try { const blob=await api(`/api/articles/${article}/assets/${id}/file`);if(!el.isConnected)return;const url=URL.createObjectURL(blob);blobUrls.push(url);el.src=url;}catch{el.alt='素材加载失败';}}));
-}
-function openImport() { $('#import-dialog').showModal(); }
-$('#cancel-import').onclick=()=>$('#import-dialog').close();
-$('#import-form').onsubmit=async e=>{e.preventDefault();const button=$('button[type=submit]',e.target);button.disabled=true;try{const fields=Object.fromEntries(new FormData(e.target));const a=await api('/api/articles',{method:'POST',body:JSON.stringify(fields)});state.demo=false;$('#import-dialog').close();e.target.reset();await refresh(false);await openArticle(a.id);toast('文章已导入，来源正在准备');}catch(err){toast(err.message);}finally{button.disabled=false;}};
-async function openArticle(id) { if(id.startsWith('demo-')){toast('这是界面示例。请导入真实来源开始创作。');return;} if(state.dirty&&!confirm('有未保存修改，确定切换文章？'))return;try{state.current=await api('/api/articles/'+id);history.replaceState(null,'','#article/'+id);state.tab='edit';state.dirty=false;closeNavigation();renderEditor();$('#crumb').textContent='文章编辑';window.scrollTo({top:0});}catch(err){toast(err.message);} }
-function editorPayload() { return {title:$('#draft-title')?.value??state.current.title,body:$('#draft-body')?.value??state.current.body,summary:$('#draft-summary')?.value??state.current.summary,keywords:($('#draft-keywords')?.value??state.current.keywords.join('，')).split(/[,，]/).map(s=>s.trim()).filter(Boolean),revision:state.current.revision}; }
-async function saveDraft(silent=false) { if(!state.dirty)return true;try{state.current=await api('/api/articles/'+state.current.id,{method:'PATCH',body:JSON.stringify(editorPayload())});state.dirty=false;if(!silent){renderEditor();toast('修改已保存，审稿结果已重置');}return true;}catch(err){toast(err.message);return false;} }
-function options() { const previous=state.current.options||{};return {word_count:Number($('#word-count')?.value||previous.word_count||1200),style:$('#writing-style')?.value||previous.style||'专业、有观点、自然简洁',platform:$('#target-platform')?.value||previous.platform||'wechat',provider:$('#model-provider')?.value||previous.provider||'deepseek',research:$('#research')?.checked??true,related_urls:($('#related-urls')?.value||'').split('\n').map(s=>s.trim()).filter(Boolean)}; }
-function renderEditor() {
-  document.body.dataset.view='editor';
-  const a=state.current, busy=a.status==='Process', opts=a.options||{};
-  $('#main').innerHTML=`<button class="back-link" id="back-library">${icon('back')}返回文章目录</button><div class="editor-head"><div><h1>${escape(a.title)}</h1><p>${statusNames[a.status]} · ${escape(a.stage)} · ${a.sources.length} 个来源 · 修订 ${a.revision}</p></div><div class="section-actions"><button class="button secondary" id="open-preview" ${!a.body?'disabled':''}>${icon('external')} 打开阅览</button><button class="button primary" id="save-draft" ${busy?'disabled':''}>保存修改</button></div></div>${a.error?`<div class="notice error-notice">${escape(a.error)}</div>`:''}
-    <div class="editor-layout"><div><div class="panel"><div class="editor-tabs">${[['edit','文案编辑'],['preview','图文预览'],['sources','来源与素材'],['versions','修订记录']].map(([t,label])=>`<button class="editor-tab ${state.tab===t?'active':''}" data-editor-tab="${t}">${label}</button>`).join('')}</div><div id="editor-content"></div></div>${deliveryPanel(a)}</div><aside class="editor-aside"><div class="panel"><div class="panel-title"><h3>${icon('edit')} 创作设置</h3><span>写作 Agent</span></div><label>目标平台<select id="target-platform">${Object.entries(platformNames).map(([id,n])=>`<option value="${id}" ${opts.platform===id?'selected':''}>${n}</option>`).join('')}</select></label><label>目标篇幅<select id="word-count">${[600,1000,1200,1800,2500,4000].map(n=>`<option value="${n}" ${(opts.word_count||1200)===n?'selected':''}>约 ${n} 字</option>`).join('')}</select></label><label>语言风格<input id="writing-style" value="${escape(opts.style||'专业、有观点、自然简洁')}"></label><label>模型服务<select id="model-provider"><option value="deepseek" ${opts.provider!=='openrouter'?'selected':''}>DeepSeek</option><option value="openrouter" ${opts.provider==='openrouter'?'selected':''}>OpenRouter</option></select></label><label class="checkbox"><input type="checkbox" id="research" ${opts.research!==false?'checked':''}>联网搜索关联来源</label><details><summary>补充关联来源</summary><label>每行一个链接，最多 4 个<textarea id="related-urls" rows="3" placeholder="https://…">${escape((opts.related_urls||[]).join('\n'))}</textarea></label></details><button class="button primary full-width" id="generate" ${busy?'disabled':''}>${busy?icon('refresh')+' '+escape(a.stage):a.body?icon('edit')+' 重新生成 + 审稿':icon('edit')+' 开始创作 + 审稿'}</button>${a.review?'<button class="button secondary full-width" id="revise" style="margin-top:10px">按审稿意见修改 + 复审</button>':''}<p class="hint">一轮写作 + 一轮独立审稿，生成与审稿结果分别保存。完成后由你确认内容。</p></div><div class="panel"><div class="panel-title"><h3>协作进度</h3><span>${busy?'进行中':'已保存'}</span></div>${[['external','研究来源',`${a.sources.length} 个已保存来源`],['edit','原创撰写',a.body?`${a.body.length} 字 · 修订 ${a.revision}`:'等待启动'],['check','独立审稿',a.review?`${a.review.score} 分 · ${a.review.verdict}`:'等待审稿']].map(([iconName,t,text])=>`<div class="progress-step"><span class="step-icon">${icon(iconName)}</span><div><strong>${t}</strong><small>${escape(text)}</small></div></div>`).join('')}${a.events.length?`<details><summary>查看执行日志</summary>${a.events.slice(-12).map(e=>`<p class="hint">${date(e.at,true)} · ${escape(e.stage)}<br>${escape(e.message)}</p>`).join('')}</details>`:''}</div><div class="panel"><div class="panel-title"><h3>${icon('check')} 审稿反馈</h3><span>审稿 Agent</span></div>${reviewHtml(a)}<button class="button secondary full-width" id="review-only" ${busy||!a.body?'disabled':''}>独立审稿当前文案</button></div></aside></div>`;
-  $('#back-library').onclick=()=>setView('library'); $('#save-draft').onclick=()=>saveDraft(); $('#open-preview').onclick=openPreview;
-  $$('[data-editor-tab]').forEach(b=>b.onclick=async()=>{if(!await saveDraft(true))return;state.tab=b.dataset.editorTab;renderEditor();});
-  $('#generate').onclick=()=>generate(false); $('#revise')?.addEventListener('click',()=>generate(true)); $('#review-only').onclick=reviewCurrent;
-  bindDelivery(); renderEditorContent();
-}
-function reviewHtml(a) { if(!a.review)return '<p class="hint">等待审稿，或编辑后重新审稿。审稿结果用于辅助判断，最终内容由你确认。</p>';const r=a.review;return `<div class="review-score"><div class="score-ring">${r.score}</div><p>${escape(r.verdict)}<br><span class="hint">基于已抓取来源核对</span></p></div>${r.issues.map(i=>`<div class="issue ${i.severity}"><strong>${escape(i.category)} · ${i.severity==='high'?'需修改':i.severity==='medium'?'建议优化':'提示'}</strong><p>${escape(i.detail)}</p>${escape(i.suggestion)}</div>`).join('')}${r.fact_checks.length?`<details><summary>查看事实核对</summary>${r.fact_checks.map(f=>`<p class="hint">${escape(f.claim)}<br>${escape(f.source_id)} · ${escape(f.status)}<br>${escape(f.reason)}</p>`).join('')}</details>`:''}<p class="hint">审稿仅覆盖已提供证据；不代表平台审核或版权投诉结果。</p>`; }
-async function renderEditorContent() {
-  const a=state.current, el=$('#editor-content');
-  if(state.tab==='edit') {
-    el.innerHTML=`<input class="editor-title" id="draft-title" value="${escape(a.title)}" aria-label="文章标题" ${a.status==='Process'?'disabled':''}><label>一句话总结<input id="draft-summary" value="${escape(a.summary)}" placeholder="生成后展示一句话总结"></label><label>关键词（逗号分隔）<input id="draft-keywords" value="${escape(a.keywords.join('，'))}" placeholder="大模型，AI 硬件，行业观察"></label><textarea class="editor-body" id="draft-body" placeholder="正文将在这里生成。也可以先手动编写 Markdown，再交给审稿 Agent。" ${a.status==='Process'?'disabled':''}>${escape(a.body)}</textarea><div class="editor-toolbar"><button class="button secondary small" id="rewrite-selection">${icon('edit')} 重写选中段落</button><button class="button secondary small" id="replace-image">${icon('image')} 插入 / 替换图片</button><button class="button secondary small" id="make-cards" ${!a.body?'disabled':''}>${icon('grid')} 生成 3:4 组图</button><span class="hint" id="save-state">${a.body.length} 字 · Markdown 编辑</span></div><label>局部重写要求<input id="rewrite-instruction" placeholder="例如：简短一点，保留数据与来源" value="让表达更自然简洁，保留事实与来源"></label><p class="hint">电脑：在正文中选中文字后重写。手机：长按文字选择，再点重写按钮。选择原图片的 Markdown 后，可在素材库中替换。</p>`;
-    ['draft-title','draft-summary','draft-keywords','draft-body'].forEach(id=>$('#'+id).oninput=()=>{state.dirty=true;$('#save-state').textContent='有未保存修改';});
-    $('#draft-body').onselect=()=>{state.selection={start:$('#draft-body').selectionStart,end:$('#draft-body').selectionEnd};};
-    $('#rewrite-selection').onclick=rewriteSelection; $('#replace-image').onclick=openAssetPicker; $('#make-cards').onclick=makeCards;
-  } else if(state.tab==='preview') {
-    el.innerHTML='<div class="loading">正在排版</div>';
-    try{const data=await api(`/api/articles/${a.id}/render`);if(state.current?.id!==a.id||state.tab!=='preview')return;el.innerHTML=`<div class="preview-prose"><h1>${escape(a.title)}</h1>${data.html}</div>`;await hydratePreview(el,a.id);}catch(err){el.textContent=err.message;}
-  } else if(state.tab==='sources') {
-    el.innerHTML=`<div class="panel-title"><h3>事实与出处</h3><span>${a.sources.length} 个来源</span></div><div class="sources-list">${a.sources.map((s,i)=>`<div class="source-item"><strong>[S${i+1}] ${escape(s.title)}</strong><a href="${safeUrl(s.url)}" target="_blank" rel="noopener noreferrer">${escape(s.url)} ${icon('external')}</a><p>${escape(s.text.slice(0,240))}…</p><span class="hint">抓取于 ${date(s.retrieved_at,true)} · 完整正文已保存在本地</span></div>`).join('')||'<p class="hint">来源仍在抓取，或尚未导入。</p>'}</div><div class="panel-title" style="margin-top:28px"><h3>文章素材</h3><label class="button secondary small" style="margin:0">${icon('plus')} 上传本地图片<input type="file" id="upload-asset" accept="image/png,image/jpeg,image/webp" hidden style="display:none"></label></div><div class="notice">来源素材需人工确认授权与水印，确认后才会用于正文。图片可从编辑页插入或替换。</div><div class="asset-grid">${a.assets.map(asset=>assetTile(a,asset)).join('')||'<p class="hint">暂无素材，上传你的配图开始编辑。</p>'}</div>`;
-    const stockBar=document.createElement('div');stockBar.className='notice';stockBar.innerHTML=`<label>图库关键词<input id="stock-query" placeholder="例如 artificial intelligence / semiconductor"></label><button class="button secondary small" id="search-stock">${icon('search')} 搜索 Pixabay 素材并保存</button><p class="hint">使用后端 Pixabay 密钥，素材保留作者与许可来源，使用前仍需确认。</p>`;el.querySelector('.asset-grid').before(stockBar);
-    $('#search-stock').onclick=async()=>{const query=$('#stock-query').value.trim();if(!query){toast('请输入素材关键词');return;}const b=$('#search-stock');b.disabled=true;try{state.current=await api(`/api/articles/${a.id}/stock`,{method:'POST',body:JSON.stringify({query})});renderEditor();toast('图库检索完成，匹配素材已保存');}catch(err){toast(err.message);b.disabled=false;}};
-    bindAssets(el); $('#upload-asset').onchange=uploadAsset;hydrateImages(el);
-  } else {
-    el.innerHTML='<div class="loading">正在读取修订记录</div>';
-    try{const versions=await api(`/api/articles/${a.id}/versions`);if(state.tab!=='versions'||state.current?.id!==a.id)return;el.innerHTML=versions.length?versions.map((v,i)=>`<div class="version"><div>修订 ${v.revision} · ${escape(v.stage)}<br><small>${date(v.updated_at,true)} · ${v.body.length} 字${v.review?' · 审稿 '+v.review.score+' 分':''}</small></div><button class="button secondary small" data-version="${i}">阅览此版本</button></div>`).join(''):'<p class="hint">生成或保存文案后，这里会记录历史版本。</p>';$$('[data-version]').forEach(b=>b.onclick=()=>showVersion(versions[Number(b.dataset.version)]));}catch(err){el.textContent=err.message;}
+let pollBusy = false;
+configureRuntime({ render, refresh, renderEditor, renderLibrary, setView, openArticle });
+$$('.nav-item').forEach((b) => (b.onclick = () => setView(b.dataset.view)));
+$('#mobile-menu').onclick = toggleNavigation;
+$('#refresh').onclick = () => refresh();
+$('.brand').onclick = (e) => {
+  e.preventDefault();
+  setView('library');
+};
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's' && state.current) {
+    e.preventDefault();
+    saveDraft();
   }
-}
-function safeUrl(url) { try { const parsed=new URL(url);return ['https:','http:'].includes(parsed.protocol)?escape(parsed.href):'#';}catch{return '#';} }
-async function hydratePreview(root,articleId) {const imgs=$$('img',root);await Promise.allSettled(imgs.map(async img=>{const match=img.getAttribute('src')?.match(/^\/api\/articles\/([a-f0-9]{32})\/assets\/([^/]+)\/file$/);if(match){img.dataset.asset=match[1]+'/'+match[2];}else{img.loading='lazy';img.referrerPolicy='no-referrer';}}));await hydrateImages(root);}
-async function generate(revise) { if(!await saveDraft(true))return;const opts=options();opts.revise=revise;try{state.current=await api(`/api/articles/${state.current.id}/generate`,{method:'POST',body:JSON.stringify(opts)});renderEditor();toast(revise?'已启动按审稿意见修改与复审':'已启动写作与审稿，结果会自动保存');}catch(err){toast(err.message);} }
-async function reviewCurrent() {if(!await saveDraft(true))return;try{state.current=await api(`/api/articles/${state.current.id}/review`,{method:'POST',body:JSON.stringify(options())});renderEditor();}catch(err){toast(err.message);} }
-async function rewriteSelection() {
-  const area=$('#draft-body'), selected=state.selection||{start:area.selectionStart,end:area.selectionEnd};if(selected.start===selected.end){toast('请先在正文中选择要重写的段落');return;}
-  // JavaScript selection offsets use UTF-16; the Python API counts Unicode code points.
-  const start=[...area.value.slice(0,selected.start)].length,end=[...area.value.slice(0,selected.end)].length;
-  const instruction=$('#rewrite-instruction').value, provider=options().provider;
-  if(!await saveDraft(true))return;const b=$('#rewrite-selection');b.disabled=true;b.textContent='正在重写';
-  try{state.current=await api(`/api/articles/${state.current.id}/paragraph`,{method:'POST',body:JSON.stringify({start,end,instruction,provider,revision:state.current.revision})});state.selection=null;renderEditor();toast('选中段落已重写并保存，其余正文已保留');}catch(err){toast(err.message);b.disabled=false;b.textContent='重写选中段落';}
-}
-async function makeCards() {if(!await saveDraft(true))return;const b=$('#make-cards');b.disabled=true;try{state.current=await api(`/api/articles/${state.current.id}/cards`,{method:'POST'});state.tab='sources';renderEditor();toast('3:4 图文组图已生成，可预览并下载');}catch(err){toast(err.message);b.disabled=false;} }
-function assetTile(article,asset,picker=false) {return `<div class="asset-tile">${asset.type==='video'?`<video controls data-asset="${article.id}/${asset.id}"></video>`:`<img data-asset="${article.id}/${asset.id}" alt="${escape(asset.alt)}">`}<div class="asset-content"><p>${asset.width||''}${asset.width?' × '+asset.height:''} · ${escape(asset.rights)}</p>${asset.attribution?`<p><a href="${safeUrl(asset.attribution)}" target="_blank" rel="noopener noreferrer">查看来源 ${icon('external')}</a></p>`:''}<label>图片描述<input type="text" data-alt="${asset.id}" value="${escape(asset.alt||'配图')}"></label><label class="checkbox"><input type="checkbox" data-approve="${article.id}/${asset.id}" ${asset.approved?'checked':''}>已确认授权且无水印</label>${picker?`<button class="button primary small" data-pick="${asset.id}" ${!asset.approved?'disabled':''}>使用这张图片</button>`:`<button class="button secondary small" data-download-asset="${article.id}/${asset.id}">下载素材</button>`}</div></div>`;}
-function bindAssets(root) {
-  $$('[data-approve]',root).forEach(input=>input.onchange=async()=>{const [id,assetId]=input.dataset.approve.split('/');try{const article=await api(`/api/articles/${id}/assets/${assetId}`,{method:'PATCH',body:JSON.stringify({approved:input.checked,alt:$(`[data-alt="${assetId}"]`,root).value})});if(state.current?.id===id)state.current=article;else state.articles=state.articles.map(a=>a.id===id?article:a);const pick=$(`[data-pick="${assetId}"]`,root);if(pick)pick.disabled=!input.checked;toast(input.checked?'素材已确认，可用于正文':'素材已移回待确认区');}catch(err){input.checked=!input.checked;toast(err.message);}});
-  $$('[data-download-asset]',root).forEach(b=>b.onclick=async()=>{try{const [id,asset]=b.dataset.downloadAsset.split('/');download(await api(`/api/articles/${id}/assets/${asset}/file`),asset+'.'+(b.closest('.asset-tile').querySelector('video')?'mp4':'jpg'));}catch(err){toast(err.message);}});
-}
-async function uploadAsset(e) { const file=e.target.files[0];if(!file)return;const form=new FormData();form.append('file',file);try{state.current=await api(`/api/articles/${state.current.id}/assets`,{method:'POST',body:form});renderEditor();toast('本地图片已上传，请确认授权与水印');}catch(err){toast(err.message);} }
-function openAssetPicker() {const area=$('#draft-body');state.imageSelection=state.selection||{start:area.selectionStart,end:area.selectionEnd};const approved=state.current.assets.filter(a=>a.type==='image');$('#asset-picker').innerHTML=approved.length?approved.map(a=>assetTile(state.current,a,true)).join(''):'<p class="hint">暂无图片，请到“来源与素材”上传本地图片。</p>';bindAssets($('#asset-picker'));$$('[data-pick]').forEach(b=>b.onclick=()=>{const asset=state.current.assets.find(a=>a.id===b.dataset.pick);const {start,end}=state.imageSelection;const value=area.value;const caption=asset.alt.replace(/[\[\]\n]/g,'');const image=`![${caption}](/api/articles/${state.current.id}/assets/${asset.id}/file)`;area.value=value.slice(0,start)+image+value.slice(end);state.dirty=true;$('#save-state').textContent='配图已替换，请保存';state.selection=null;$('#asset-dialog').close();});hydrateImages($('#asset-picker'));$('#asset-dialog').showModal(); }
-$('#close-assets').onclick=()=>$('#asset-dialog').close();
-function deliveryPanel(a) { return `<div class="panel"><div class="panel-title"><h3>${icon('external')} 多平台草稿投递</h3><span>最终发布由你决定</span></div><p class="hint">公众号写入官方草稿箱；其他平台生成适配素材包，在平台中手动保存草稿。</p><div class="platform-select">${Object.entries(platformNames).map(([id,n])=>`<label><input type="checkbox" value="${id}" name="publish-platform" ${id==='wechat'?'checked':''}>${n}</label>`).join('')}</div><div class="section-actions"><button class="button primary" id="deliver" ${!a.body||a.status==='Process'?'disabled':''}>准备 / 投递所选平台</button><button class="button secondary" id="export-draft" ${!a.body?'disabled':''}>下载图文包</button></div>${a.deliveries.slice(-4).map(d=>`<div class="delivery-row"><div class="platform-text"><strong>${platformNames[d.platform]} · ${d.status==='draft_saved'?'已存入草稿箱':d.status==='export_ready'?'素材包就绪':'投递失败'}</strong><p>${escape(d.message)}</p></div>${d.status==='export_ready'?`<button class="button secondary small" data-export="${d.platform}">下载素材包</button>`:''}</div>`).join('')}</div>`; }
-function bindDelivery() { $('#deliver').onclick=async()=>{if(!await saveDraft(true))return;const selected=$$('input[name=publish-platform]:checked').map(i=>i.value);if(!selected.length){toast('请选择至少一个平台');return;}const b=$('#deliver');b.disabled=true;try{const result=await api(`/api/articles/${state.current.id}/deliver`,{method:'POST',body:JSON.stringify({platforms:selected})});state.current=await api(`/api/articles/${state.current.id}`);renderEditor();for(const item of result.filter(r=>r.status==='export_ready'))await exportDraft(item.platform);toast(result.map(r=>platformNames[r.platform]+(r.status==='failed'?'：'+r.message:r.status==='draft_saved'?'：已写入草稿箱':'：素材包已生成')).join('；'));}catch(err){toast(err.message);b.disabled=false;}};$('#export-draft').onclick=async()=>{if(await saveDraft(true))exportDraft(options().platform);};$$('[data-export]').forEach(b=>b.onclick=()=>exportDraft(b.dataset.export)); }
-function download(blob,name) {const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);}
-async function exportDraft(platform) {try{download(await api(`/api/articles/${state.current.id}/export/${platform}`),`${platform}-draft.zip`);}catch(err){toast(err.message);} }
-async function openPreview() {if(!await saveDraft(true))return;const w=window.open('about:blank','_blank');if(!w){toast('浏览器拦截了阅览窗口，请允许弹窗');return;}try{const blob=await api(`/api/articles/${state.current.id}/preview`);const text=await blob.text();const doc=new DOMParser().parseFromString(text,'text/html');for(const img of $$('img',doc)){const match=img.getAttribute('src')?.match(/^\/api\/articles\/([a-f0-9]{32})\/assets\/([^/]+)\/file$/);if(match){const b=await api(`/api/articles/${match[1]}/assets/${match[2]}/file`);img.src=await blobDataUrl(b);}}w.document.open();w.document.write('<!doctype html>'+doc.documentElement.outerHTML);w.document.close();}catch(err){w.close();toast(err.message);} }
-function blobDataUrl(blob) {return new Promise(resolve=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.readAsDataURL(blob);});}
-function showVersion(v) {const w=window.open('about:blank','_blank');if(!w)return;w.document.open();w.document.write(`<!doctype html><meta charset="utf-8"><title>${escape(v.title)}</title><body style="max-width:760px;margin:40px auto;padding:25px;font-family:system-ui"><h1>${escape(v.title)}</h1><p>历史版本 · ${date(v.updated_at,true)} · 修订 ${v.revision}</p><pre style="white-space:pre-wrap;line-height:1.9">${escape(v.body)}</pre></body>`);w.document.close();}
-
-function renderMaterials() {const assets=state.articles.flatMap(a=>a.assets.map(asset=>({article:a,asset})));$('#main').innerHTML=heading('YOUR VISUAL RESOURCES','素材库','按文章归档的图片、视频与本地生成组图。')+`<div class="asset-grid">${assets.length?assets.map(({article,asset})=>assetTile(article,asset)).join(''):empty('给内容一个更好的视觉表达','导入文章后，来源素材会自动归档。<br>也可以在文章编辑页上传图片、生成组图。',`<button class="button primary" id="material-import">${icon('plus')} 导入文章</button>`)}</div>`;$('#material-import')?.addEventListener('click',openImport);bindAssets($('#main'));hydrateImages();}
-function renderDeliveries() {const rows=state.articles.flatMap(a=>a.deliveries.map(d=>({a,d}))).sort((x,y)=>y.d.at.localeCompare(x.d.at));$('#main').innerHTML=heading('READY FOR YOUR AUDIENCE','草稿投递','查看草稿写入结果与素材包记录，最终发送在各平台完成。')+`<div class="panel">${rows.length?rows.map(({a,d})=>`<div class="delivery-row"><div class="platform-logo">${icon('send')}</div><div class="platform-text"><strong>${escape(a.title)}</strong><p>${platformNames[d.platform]} · ${escape(d.message)}</p><small>${date(d.at,true)}${d.media_id?' · media_id: '+escape(d.media_id):''}</small></div><span class="pill ${d.status==='failed'?'warning':''}">${d.status==='draft_saved'?'草稿已写入':d.status==='export_ready'?'素材包就绪':'失败'}</span><button class="button secondary small" data-open-delivery="${a.id}">打开文章</button></div>`).join(''):empty('内容准备好了，再出发','完成文案后，在编辑页面选择目标平台。<br>公众号写入草稿箱，其他平台导出图文素材包。')}</div>`;$$('[data-open-delivery]').forEach(b=>b.onclick=()=>openArticle(b.dataset.openDelivery));}
-function renderSettings() {
-  const settings = state.settings;
-  $('#main').innerHTML = heading('','设置与连接','配置服务连接与草稿投递，密钥保存在后端。') + `<div class="settings-sections">
-    <section class="settings-section"><div class="settings-description"><h2>后端服务</h2><p>连接你的内容工作台，文章、素材和修订保存在这里。</p><span class="pill ${state.online?'':'warning'}">${state.online?'已连接':'未连接'}</span><p class="hint">本地使用当前地址。在线前端需连接 HTTPS 后端；同一局域网的手机可访问电脑地址。</p></div><div class="panel"><form id="connection-form"><label>后端地址<input type="url" name="api" value="${escape(apiBase)}" placeholder="http://127.0.0.1:8000" required></label><label>访问令牌<input type="password" name="token" value="${escape(token)}" placeholder="与后端 APP_TOKEN 一致" autocomplete="off"></label><p class="hint">访问令牌仅保留在当前浏览器会话。</p><div class="form-actions"><button class="button primary" type="submit">保存并连接</button></div></form></div></section>
-    <section class="settings-section"><div class="settings-description"><h2>写作与审稿模型</h2><p>同一模型服务分别承担写作和独立审稿，两次结果均会保存。</p><p class="hint">在后端 .env 修改 API_KEY、BASE_URL 和 MODEL，重启服务后生效。</p></div><div class="panel">${['deepseek','openrouter'].map(p=>{const item=settings?.providers.find(x=>x.id===p);return `<div class="settings-platform"><div class="platform-text"><strong>${p==='deepseek'?'DeepSeek':'OpenRouter'}</strong><p>${escape(item?.model||'连接后端后读取配置')}</p></div><span class="pill ${item?.configured?'':'warning'}">${item?.configured?'已配置':'未配置'}</span></div>`;}).join('')}</div></section>
-    <section class="settings-section"><div class="settings-description"><h2>平台草稿工作流</h2><p>先准备草稿，再到平台确认和发送。</p><p class="hint">公众号支持官方草稿接口。其他平台提供文案和素材包，需手动保存到草稿箱。</p></div><div class="panel">${Object.entries(platformNames).map(([id,name])=>`<div class="settings-platform"><div class="platform-text"><strong>${name}</strong><p>${id==='wechat'?'官方接口写入草稿箱，需账号权限与 IP 白名单':'导出图文素材包，在平台手动保存草稿'}</p></div><span class="pill ${id==='wechat'&&!settings?.wechat_configured?'warning':''}">${id==='wechat'?(settings?.wechat_configured?'凭据已配置':'待配置'):'图文包'}</span></div>`).join('')}</div></section>
-    <section class="settings-section"><div class="settings-description"><h2>微信公众号</h2><p>设置草稿署名与封面素材。</p><p class="hint">App ID 和 App Secret 在后端 .env 配置。封面为空时，会上传文章的第一张已确认图片。</p><div class="draft-mini"><span>草稿示例</span><strong>行业要闻解读</strong><p>${escape(settings?.wechat?.author||'未设置署名')} · ${settings?.wechat?.thumb_media_id?'使用指定封面':'使用已确认的文章配图'}</p></div></div><div class="panel"><form id="wechat-form"><label>署名（最多 8 字）<input name="author" maxlength="8" value="${escape(settings?.wechat?.author||'')}" placeholder="例如：科技观察"></label><label>封面 thumb_media_id（可选）<input name="thumb_media_id" value="${escape(settings?.wechat?.thumb_media_id||'')}" placeholder="留空时使用文章配图"></label><p class="hint">${state.online?'配置保存后用于新增公众号草稿。':'请先连接后端，再保存平台配置。'}</p><div class="form-actions"><button class="button secondary" type="submit" ${!state.online?'disabled':''}>保存平台配置</button></div></form></div></section>
-    </div>`;
-  $('#connection-form').onsubmit=async e=>{e.preventDefault();const fields=new FormData(e.target);const address=String(fields.get('api')).replace(/\/$/,'');const parsed=new URL(address);if(!['http:','https:'].includes(parsed.protocol)){toast('后端地址需要使用 HTTP 或 HTTPS');return;}apiBase=address;token=String(fields.get('token'));localStorage.setItem('signal.api',apiBase);sessionStorage.setItem('signal.token',token);await refresh();toast(state.online?'后端连接成功':'连接失败，请检查服务与令牌');};
-  $('#wechat-form').onsubmit=async e=>{e.preventDefault();try{state.settings=await api('/api/settings',{method:'POST',body:JSON.stringify({wechat:Object.fromEntries(new FormData(e.target))})});toast('公众号草稿配置已保存');}catch(err){toast(err.message);}};
-}
-async function refresh(redraw=true) {try{const [articles,settings]=await Promise.all([api('/api/articles'),api('/api/settings')]);state.articles=articles;state.settings=settings;state.online=true;if(state.current&&!state.dirty){const current=articles.find(a=>a.id===state.current.id);if(current)state.current=current;}}catch{state.online=false;}connection();if(redraw)render();}
-$$('.nav-item').forEach(b=>b.onclick=()=>setView(b.dataset.view)); $('#mobile-menu').onclick=toggleNavigation;$('#refresh').onclick=()=>refresh();$('.brand').onclick=e=>{e.preventDefault();setView('library');};
-document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='s'&&state.current){e.preventDefault();saveDraft();}if(['Enter',' '].includes(e.key)&&e.target.matches('[data-article]')){e.preventDefault();openArticle(e.target.dataset.article);}});
-window.addEventListener('beforeunload',e=>{if(state.dirty){e.preventDefault();e.returnValue='';}});
-setInterval(async()=>{if(pollBusy||state.dirty||document.hidden||!apiBase)return;pollBusy=true;try{const wasBusy=state.articles.some(a=>a.status==='Process')||state.current?.status==='Process';if(wasBusy){const currentId=state.current?.id,tab=state.tab;await refresh(false);if(state.current?.id===currentId)state.tab=tab;if(!$('#import-dialog').open&&!$('#asset-dialog').open)render();}}finally{pollBusy=false;}},4000);
-$$('[data-icon]').forEach(el=>el.innerHTML=icon(el.dataset.icon));
-function closeNavigation() { $('.sidebar').classList.remove('open'); $('#mobile-menu').setAttribute('aria-expanded','false'); $('#mobile-menu').setAttribute('aria-label','打开导航'); $('#mobile-menu').innerHTML=icon('menu'); document.body.classList.remove('nav-open'); }
-function toggleNavigation() { const open=!$('.sidebar').classList.contains('open'); if(!open){closeNavigation();return;} $('.sidebar').classList.add('open'); $('#mobile-menu').setAttribute('aria-expanded','true'); $('#mobile-menu').setAttribute('aria-label','关闭导航'); $('#mobile-menu').innerHTML=icon('close'); document.body.classList.add('nav-open'); $('.nav-item.active').focus(); }
-document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeNavigation();$('#mobile-menu').focus();}
-  if(e.key==='Tab'&&document.body.classList.contains('nav-open')) {
-    const controls=[$('#mobile-menu'),$('.brand'),...$$('.nav-item')];
-    const index=controls.indexOf(document.activeElement);
-    if((e.shiftKey&&index<=0)||(!e.shiftKey&&index===controls.length-1)) {
-      e.preventDefault();controls[e.shiftKey?controls.length-1:0].focus();
+  if (['Enter', ' '].includes(e.key) && e.target.matches('[data-article]')) {
+    e.preventDefault();
+    openArticle(e.target.dataset.article);
+  }
+});
+window.addEventListener('beforeunload', (e) => {
+  if (state.dirty) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+setInterval(async () => {
+  if (pollBusy || state.dirty || document.hidden || !connectionConfig.base) return;
+  pollBusy = true;
+  try {
+    const wasBusy =
+      state.articles.some((a) => a.status === 'Process') || state.current?.status === 'Process';
+    if (wasBusy) {
+      const currentId = state.current?.id,
+        tab = state.tab;
+      await refresh(false);
+      if (state.current?.id === currentId) state.tab = tab;
+      if (!$('#import-dialog').open && !$('#asset-dialog').open) render();
+    }
+  } finally {
+    pollBusy = false;
+  }
+}, 4000);
+$$('[data-icon]').forEach((el) => (el.innerHTML = icon(el.dataset.icon)));
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeNavigation();
+    $('#mobile-menu').focus();
+  }
+  if (e.key === 'Tab' && document.body.classList.contains('nav-open')) {
+    const controls = [$('#mobile-menu'), $('.brand'), ...$$('.nav-item')];
+    const index = controls.indexOf(document.activeElement);
+    if ((e.shiftKey && index <= 0) || (!e.shiftKey && index === controls.length - 1)) {
+      e.preventDefault();
+      controls[e.shiftKey ? controls.length - 1 : 0].focus();
     }
   }
 });
-async function boot() {
-  render();
-  await refresh();
-  const route=location.hash.slice(1);
-  if(['library','materials','deliveries','settings'].includes(route))setView(route);
-  else if(/^article\/[a-f0-9]{32}$/.test(route))await openArticle(route.slice(8));
-}
+bindImportDialog();
+bindAssetDialog();
 boot();

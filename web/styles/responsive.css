@@ -1,0 +1,124 @@
+@media (min-width: 1500px) {
+  .topbar {
+    right: max(var(--pad), calc((100vw - var(--sidebar) - 1100px) / 2));
+  }
+}
+@media (max-width: 1100px) {
+  :root {
+    --sidebar: 0px;
+    --pad: 24px;
+  }
+  .sidebar {
+    width: 100%;
+    padding: 76px 24px 28px;
+    transform: translateX(-100%);
+    transition: transform 180ms ease;
+    z-index: 30;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  .sidebar .brand {
+    font-size: 24px;
+  }
+  .sidebar .workspace {
+    margin: 28px 0;
+  }
+  .sidebar .nav-item {
+    min-height: 48px;
+    font-size: 16px;
+    padding: 10px 12px;
+  }
+  .sidebar-note {
+    padding-top: 24px;
+  }
+  body.nav-open {
+    overflow: hidden;
+  }
+  .topbar {
+    position: sticky;
+    top: 0;
+    right: auto;
+    width: 100%;
+    min-height: 56px;
+    padding: 0 var(--pad);
+    gap: 12px;
+    background: var(--ground);
+    z-index: 40;
+  }
+  #mobile-menu {
+    display: inline-flex;
+    width: 44px;
+    height: 44px;
+    margin-left: -6px;
+  }
+  .breadcrumb {
+    display: block;
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+  }
+  .breadcrumb > span {
+    margin: 0 8px;
+  }
+  .breadcrumb strong {
+    font-weight: 500;
+  }
+  .topbar-right {
+    gap: 8px;
+  }
+  main {
+    padding-top: 28px;
+  }
+  .editor-layout {
+    grid-template-columns: minmax(0, 1fr) 280px;
+  }
+  .article-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .article-grid[data-count="1"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .article-grid[data-count="3"] > :last-child {
+    grid-column: 1/-1;
+  }
+  .panel {
+    padding: 20px;
+  }
+  .editor-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .editor-tabs {
+    gap: 16px;
+  }
+  .editor-tab {
+    font-size: 12px;
+  }
+  .settings-layout {
+    grid-template-columns: 1fr;
+  }
+  .asset-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 800px) {
+  .editor-layout {
+    grid-template-columns: 1fr;
+  }
+  .editor-aside {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--gap);
+  }
+  .editor-aside > :first-child {
+    grid-column: 1/-1;
+  }
+  .editor-aside > .panel {
+    margin-bottom: 0;
+  }
+  .article-grid[data-count="1"] .article-card.has-cover {
+    grid-template-columns: 160px minmax(0, 1fr);
+  }
+}

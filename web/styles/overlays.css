@@ -1,0 +1,91 @@
+dialog {
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  width: min(560px, calc(100% - 32px));
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 32px;
+  box-shadow: 0 24px 80px #16372930;
+}
+dialog::backdrop {
+  background: #1c302a66;
+}
+.modal-heading h2 {
+  font-size: 22px;
+  margin-bottom: 12px;
+}
+.modal-heading p {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.8;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 24px;
+}
+#asset-dialog {
+  width: min(900px, calc(100% - 32px));
+}
+#asset-picker {
+  max-height: 60dvh;
+  overflow: auto;
+}
+#toast {
+  position: fixed;
+  bottom: 24px;
+  left: calc(50% + var(--sidebar) / 2);
+  transform: translateX(-50%) translateY(8px);
+  padding: 14px 20px;
+  max-width: calc(100% - 32px);
+  color: var(--surface);
+  background: var(--primary);
+  font-size: 13px;
+  border-radius: 8px;
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+#toast.visible {
+  opacity: 1;
+  transform: translateX(-50%);
+}
+.loading {
+  padding: 48px 24px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 14px;
+}
+.loading:before {
+  content: "";
+  display: block;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border);
+  border-top-color: var(--muted);
+  border-radius: 50%;
+  margin: 0 auto 16px;
+  animation: spin 800ms linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+body[data-view="editor"] #generate,
+body[data-view="editor"] #deliver {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--control);
+}
+body[data-view="editor"] #generate:hover,
+body[data-view="editor"] #deliver:hover {
+  border-color: var(--muted);
+}

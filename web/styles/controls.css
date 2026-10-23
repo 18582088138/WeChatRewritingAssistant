@@ -1,0 +1,90 @@
+h1,
+h2,
+h3,
+p {
+  overflow-wrap: anywhere;
+}
+h1 {
+  font-size: 26px;
+  line-height: 1.4;
+  font-weight: 600;
+  margin: 0 0 10px;
+  letter-spacing: -0.5px;
+}
+h2 {
+  font-size: 18px;
+  line-height: 1.5;
+  font-weight: 600;
+  margin: 0;
+}
+h3 {
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 500;
+  margin: 0;
+}
+.page-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+.page-heading p {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.8;
+  margin: 0;
+}
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+  transition: transform 120ms ease;
+}
+.button:active {
+  transform: translateY(1px);
+}
+.primary {
+  color: var(--surface);
+  background: var(--primary);
+}
+.primary:hover:not(:disabled) {
+  background: #35493e;
+}
+.secondary {
+  color: var(--ink);
+  background: var(--surface);
+  border-color: var(--control);
+}
+.secondary:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+.ghost {
+  color: var(--muted);
+  background: transparent;
+  border-color: var(--control);
+}
+.small {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+.full-width {
+  width: 100%;
+}
+.section-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}

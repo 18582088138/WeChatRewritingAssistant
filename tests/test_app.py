@@ -126,7 +126,7 @@ def test_review_flags_unverifiable_sources(client, monkeypatch):
 
 def test_stock_search_keeps_material_pending(client, monkeypatch):
     a = article()
-    monkeypatch.setattr('backend.app.stock_images', lambda *args: [dict(id='stock-test', type='image', path='materials/pixabay/test.jpg',
+    monkeypatch.setattr('backend.routes.assets.stock_images', lambda *args: [dict(id='stock-test', type='image', path='materials/pixabay/test.jpg',
                                                                     alt='AI', approved=False, attribution='https://pixabay.com/example')])
     response = client.post(f'/api/articles/{a["id"]}/stock', json={'query': 'artificial intelligence'})
     assert response.status_code == 200
