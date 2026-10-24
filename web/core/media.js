@@ -11,11 +11,15 @@ export async function hydrateImages(root = document) {
     $$('[data-asset]', root).map(async (el) => {
       const [article, id] = el.dataset.asset.split('/');
       try {
-        const blob = await api(`/api/articles/${article}/assets/${id}/file`);
+        const blob = await api(article==='public'?`/api/materials/public/assets/${id}/file`:`/api/articles/${article}/assets/${id}/file`);
         if (!el.isConnected) return;
         const url = URL.createObjectURL(blob);
         blobUrls.push(url);
         el.src = url;
+        const poster=el.getAttribute('poster');
+        if(el.tagName==='VIDEO'&&(poster?.startsWith('/api/articles/')||poster?.startsWith('/api/materials/public/'))){
+          const frame=URL.createObjectURL(await api(poster));blobUrls.push(frame);if(el.isConnected)el.poster=frame;
+        }
       } catch {
         el.alt = '素材加载失败';
       }

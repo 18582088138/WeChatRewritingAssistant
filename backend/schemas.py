@@ -34,6 +34,13 @@ class Edit(BaseModel):
     summary: str = Field(max_length=400)
     keywords: list[str] = Field(max_length=12)
     revision: int
+    new_version: bool = False
+
+
+class ParagraphApply(BaseModel):
+    proposal_id: str = Field(pattern=r"^[a-f0-9]{32}$")
+    revision: int
+    text: str = Field(min_length=1, max_length=10000)
 
 
 class Paragraph(BaseModel):

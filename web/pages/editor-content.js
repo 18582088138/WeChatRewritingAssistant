@@ -1,7 +1,7 @@
 import { icon } from '../icons.js';
 import { $, $$, escape, date, toast } from '../core/dom.js';
 import { api } from '../core/api.js';
-import { rewriteSelection } from '../features/editor/draft.js';
+import { rewriteSelection, saveDraft } from '../features/editor/draft.js';
 import { makeCards, uploadAsset, openAssetPicker } from '../features/editor/assets.js';
 import { showVersion } from '../features/editor/preview.js';
 import { bindAssets } from '../components/assets.js';
@@ -10,27 +10,40 @@ import { runtime } from '../core/runtime.js';
 import { sourceItem } from '../components/source.js';
 import { pagedPreview } from '../features/editor/paged-preview.js';
 import { assetPages } from '../features/editor/asset-pages.js';
+import { hydratePreview } from '../core/media.js';
 
 export async function renderEditorContent() {
   const a = state.current,
     el = $('#editor-content');
   if (state.tab === 'edit') {
+    if (a.body && !state.editing) {
+      el.innerHTML = `<div class="reader-toolbar"><span class="hint">Markdown 阅览 · 双击正文进入编辑${a.highlights?.length ? ' · 高亮处为本版修改' : ''}</span><button class="button secondary small" id="enter-edit">编辑文案</button></div><p class="hint">${escape(a.summary)}</p><article class="draft-reading" id="draft-reading" aria-label="文案阅览"></article>`;
+      const enter = () => {state.editing = true; renderEditorContent();};
+      $('#enter-edit').onclick = enter;
+      $('#draft-reading').ondblclick = enter;
+      try {
+        const data = await api(`/api/articles/${a.id}/render`);
+        if (state.current?.id !== a.id || state.tab !== 'edit' || state.editing) return;
+        $('#draft-reading').innerHTML = data.html;
+        hydratePreview($('#draft-reading'));
+      } catch (err) { if ($('#draft-reading')) $('#draft-reading').textContent = err.message; }
+      return;
+    }
     el.innerHTML = `<input class="editor-title" id="draft-title" value="${escape(a.title)}" aria-label="文章标题" ${a.status === 'Process' ? 'disabled' : ''}>
       <label>一句话总结<input id="draft-summary" value="${escape(a.summary)}" placeholder="生成后展示一句话总结">
       </label>
-      <label>关键词（逗号分隔）<input id="draft-keywords" value="${escape(a.keywords.join('，'))}" placeholder="大模型，AI 硬件，行业观察">
-      </label>
       <textarea class="editor-body" id="draft-body" placeholder="正文将在这里生成。也可以先手动编写 Markdown，再交给审稿 Agent。" ${a.status === 'Process' ? 'disabled' : ''}>${escape(a.body)}</textarea>
       <div class="editor-toolbar">
+      <button class="button secondary small" id="return-reading">返回阅览</button>
       <button class="button secondary small" id="rewrite-selection">${icon('edit')} 重写选中段落</button>
       <button class="button secondary small" id="replace-image">${icon('image')} 插入 / 替换图片</button>
       <button class="button secondary small" id="make-cards" ${!a.body ? 'disabled' : ''}>${icon('grid')} 生成 3:4 组图</button>
-      <span class="hint" id="save-state">${a.body.length} 字 · Markdown 编辑</span>
+      <span class="hint" id="save-state">${a.prose_chars ?? a.body.length} 字 · Markdown 编辑</span>
       </div>
       <label>局部重写要求<input id="rewrite-instruction" placeholder="例如：简短一点，保留数据与来源" value="让表达更自然简洁，保留事实与来源">
       </label>
       <p class="hint">电脑：在正文中选中文字后重写。手机：长按文字选择，再点重写按钮。选择原图片的 Markdown 后，可在素材库中替换。</p>`;
-    ['draft-title', 'draft-summary', 'draft-keywords', 'draft-body'].forEach(
+    ['draft-title', 'draft-summary', 'draft-body'].forEach(
       (id) =>
         ($('#' + id).oninput = () => {
           state.dirty = true;
@@ -46,6 +59,7 @@ export async function renderEditorContent() {
     $('#rewrite-selection').onclick = rewriteSelection;
     $('#replace-image').onclick = openAssetPicker;
     $('#make-cards').onclick = makeCards;
+    $('#return-reading').onclick = async () => { if (await saveDraft(true)) {state.editing=false;runtime.renderEditor();} };
   } else if (state.tab === 'preview') {
     el.innerHTML = '<div class="loading">正在排版</div>';
     try {
@@ -112,8 +126,8 @@ export async function renderEditorContent() {
             .map(
               (v, i) =>
                 `<div class="version">
-      <div>修订 ${v.revision} · ${escape(v.stage)}<br>
-      <small>${date(v.updated_at, true)} · ${v.body.length} 字${v.review ? ' · 审稿 ' + v.review.score + ' 分' : ''}</small>
+      <div>第 ${v.version_number || 1} 版<br>
+      <small>${date(v.updated_at, true)} · ${v.prose_chars ?? v.body.length} 字${v.review ? ' · 审稿 ' + v.review.score + ' 分' : ''}</small>
       </div>
       <button class="button secondary small" data-version="${i}">阅览此版本</button>
       </div>`,

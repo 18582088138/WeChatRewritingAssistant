@@ -11,11 +11,18 @@ from .research_html import extract_html
 from .research_pdf import extract_pdf
 from .research_quality import save_metadata
 from .research_search import search as search
+from .research_x import post_identity, extract_x
 
 
 def extract(url, output: Path):
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
+    if post_identity(url):
+        source = extract_x(url, output)
+        source.update(requested_url=url, retrieved_at=store.now())
+        (output / "text.txt").write_text(source["text"], encoding="utf8")
+        save_metadata(source, output)
+        return source
     raw, kind, final = fetch(url)
     requested_url = url
     # An arXiv abstract is not the technical report: follow the full-text representation.

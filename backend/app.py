@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import store
 from .routes import articles, assets, delivery, generation, preview, research, settings
-from .routes import references
+from .routes import references, public_materials
 from .tasks import recover
 
 
@@ -59,6 +59,7 @@ def create_app(serve_frontend=True):
         delivery,
         research,
         references,
+        public_materials,
     ):
         application.include_router(module.router)
 

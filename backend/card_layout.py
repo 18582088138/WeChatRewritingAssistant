@@ -4,6 +4,7 @@ import re
 from PIL import Image, ImageDraw, ImageOps
 from . import store
 from .configuration import settings
+from .draft_presentation import clean_body
 
 
 def editorial_pages(article, eligible, cfg):
@@ -16,13 +17,15 @@ def editorial_pages(article, eligible, cfg):
             pages.append(dict(title=heading, text=buffer, asset=None))
             buffer = ""
 
-    for block in article["body"].split("\n\n"):
+    for block in clean_body(article["body"]).split("\n\n"):
         if block.startswith("##"):
             flush()
             heading = block.lstrip("# ").strip()
             continue
         image_id = re.search(r"/assets/([^/]+)/file", block)
-        visual = next((a for a in eligible if image_id and a["id"] == image_id[1]), None)
+        video = next((a for a in article.get("assets", []) if image_id and a["type"] == "video" and a["id"] == image_id[1]), None)
+        visual_id = video.get("poster_asset_id") if video else image_id[1] if image_id else None
+        visual = next((a for a in eligible if a["id"] == visual_id), None)
         text = re.sub(r"!\[[^]]*\]\([^)]*\)", "", block)
         text = re.sub(r"\[([^]]+)\]\(([^)]+)\)", r"\1", text)
         text = re.sub(r"[*`#]", "", text).strip()

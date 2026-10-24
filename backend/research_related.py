@@ -12,7 +12,7 @@ from datetime import timedelta
 def queries(source):
     text = source["title"] + "\n" + source["text"][:12000]
     names = re.findall(
-        r"(?i)(?<![a-z0-9])(?:MiniMax\s*H\d+|(?:Claude\s+)?(?:Opus|Sonnet|Haiku)\s*\d+(?:\.\d+)?|FLASepformer|JAEC|SmolVLA|DeepSeek[ -]V\d+(?:\.\d+)?|Qwen\d+(?:\.\d+)?(?:-VL)?)(?![a-z0-9.])",
+        r"(?i)(?<![a-z0-9])(?:Sunra\s*MCP|MiniMax\s*H\d+|(?:Claude\s+)?(?:Opus|Sonnet|Haiku)\s*\d+(?:\.\d+)?|FLASepformer|JAEC|SmolVLA|DeepSeek[ -]V\d+(?:\.\d+)?|Qwen\d+(?:\.\d+)?(?:-VL)?)(?![a-z0-9.])",
         text,
     )
     names = list(dict.fromkeys(name.strip() for name in names))

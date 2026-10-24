@@ -10,6 +10,9 @@ from ..network import validate_url
 from ..schemas import Edit, ImportArticle
 from ..archive import attach_source
 from ..tasks import background_job, launch, reserve
+from ..revisions import history
+from ..review_state import current
+from ..draft_presentation import prose_length
 
 router = APIRouter(dependencies=[Depends(auth)])
 
@@ -67,6 +70,8 @@ def detail(article_id: str):
             if exc.status_code != 409:
                 raise
     article["storage_path"] = str(store.folder(article_id))
+    article["review_current"] = current(article)
+    article["prose_chars"] = prose_length(article["body"])
     return article
 
 
@@ -78,10 +83,11 @@ def edit(article_id: str, payload: Edit):
         article = get_article(article_id)
         if payload.revision != article["revision"]:
             raise HTTPException(409, "文章已更新，请刷新后再编辑")
-        article.update(payload.model_dump(exclude={"revision"}))
+        history(article, store.folder(article_id))
+        article.update(payload.model_dump(exclude={"revision", "new_version"}))
+        article["new_version_requested"] = payload.new_version
         article["revision"] += 1
-        article["review"] = None
-        article["stage"] = "人工编辑，待审稿"
+        article["stage"] = "修改已保存"
         result.append(store.save(article, snapshot=True))
 
     launch(article_id, operation)
@@ -90,10 +96,4 @@ def edit(article_id: str, payload: Edit):
 
 @router.get("/api/articles/{article_id}/versions")
 def versions(article_id: str):
-    get_article(article_id)
-    return [
-        dict(**json.loads(p.read_text(encoding="utf-8")), version_id=p.stem)
-        for p in sorted(
-            (store.folder(article_id) / "versions").glob("*.json"), reverse=True
-        )
-    ][:30]
+    return history(get_article(article_id), store.folder(article_id))

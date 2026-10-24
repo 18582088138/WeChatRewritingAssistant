@@ -2,6 +2,8 @@
   "window_days": 3,
   "allow_background": true,
   "max_sources": 8,
+  "target_sources": 5,
+  "minimum_sources": 3,
   "max_candidates": 12,
   "context_chars": 28000,
   "image_limit": 12,

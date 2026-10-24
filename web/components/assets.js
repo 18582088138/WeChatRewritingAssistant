@@ -7,7 +7,7 @@ import { state } from '../core/state.js';
 export function assetTile(article, asset, picker = false) {
   return `<div class="asset-tile">${
     asset.type === 'video'
-      ? `<video controls data-asset="${article.id}/${asset.id}">
+      ? `<video controls ${asset.poster_asset_id ? `poster="/api/articles/${article.id}/assets/${asset.poster_asset_id}/file"` : ''} data-asset="${article.id}/${asset.id}">
       </video>`
       : `<img data-asset="${article.id}/${asset.id}" alt="${escape(asset.alt)}">`
   }<div class="asset-content">

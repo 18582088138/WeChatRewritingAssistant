@@ -1,6 +1,7 @@
 import { icon } from '../icons.js';
 import { escape } from '../core/dom.js';
 import { platformNames } from '../core/state.js';
+import { formatKeywords } from '../core/keywords.js';
 
 export function deliveryPanel(a) {
   return `<div class="panel">
@@ -9,6 +10,7 @@ export function deliveryPanel(a) {
       <span>最终发布由你决定</span>
       </div>
       <p class="hint">公众号写入官方草稿箱；其他平台生成适配素材包，在平台中手动保存草稿。</p>
+      <label>关键词<input id="draft-keywords" value="${escape(a.keywords.join('，'))}" placeholder="AI，大模型，芯片"></label><label>关键词格式<select id="keyword-platform">${Object.entries(platformNames).map(([id,name])=>`<option value="${id}">${name}</option>`).join('')}</select></label><textarea id="formatted-keywords" readonly rows="2" aria-label="平台关键词">${escape(formatKeywords(a.keywords,'wechat'))}</textarea>
       <div class="platform-select">${Object.entries(platformNames)
         .map(
           ([id, n]) =>

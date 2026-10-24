@@ -4,7 +4,7 @@ export function reviewHtml(a) {
   if (!a.review)
     return '<p class="hint">等待审稿，或编辑后重新审稿。审稿结果用于辅助判断，最终内容由你确认。</p>';
   const r = a.review;
-  return `<div class="review-score">
+  return `${a.review_current === false ? '<p class="notice">文案或资料已修改。下面保留最近一次审稿，需重新审稿。</p>' : ''}<div class="review-score">
       <div class="score-ring">${r.score}</div>
       <p>${escape(r.verdict)}<br>
       <span class="hint">基于已抓取来源核对</span>

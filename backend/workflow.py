@@ -9,6 +9,9 @@ from .configuration import settings, archive_configuration
 from .archive import attach_source
 from .draft_media import ensure_media
 from .research_search import source_identity
+from .revisions import history
+from .draft_presentation import prepare
+from .video_posters import ensure_posters
 
 
 def ingest(article_id):
@@ -27,6 +30,7 @@ def ingest(article_id):
     article = store.read(article_id)
     article["sources"] = [source]
     article["assets"] = assets
+    ensure_posters(article, store.folder(article_id))
     article["title"] = source["title"]
     store.save(article)
     saved = source["quality"]
@@ -76,6 +80,7 @@ def run(article_id, options, review_only=False):
                         source_identity(url) in known
                         or len(article["sources"])
                         >= settings("research")["max_sources"]
+                        or (source_identity(url) not in manual_urls and len(article["sources"]) >= settings("research").get("target_sources", 5))
                     ):
                         continue
                     try:
@@ -126,10 +131,17 @@ def run(article_id, options, review_only=False):
                 current = store.read(article_id)
                 article["events"] = current["events"]
                 store.save(article)
+            article = store.read(article_id)
+            total = len(article["sources"])
+            article["reference_coverage"] = dict(count=total, target=settings("research").get("target_sources", 5), sparse=total < settings("research").get("minimum_sources", 3))
+            store.save(article)
+            if article["reference_coverage"]["sparse"]:
+                store.event(article_id, "参考资料", f"仅取得 {total} 篇可用参考，按稀少主题继续创作；不以弱相关资料凑数，可手动补充")
             store.event(
                 article_id, "原创撰写", "写作 Agent 整理事实、组织解读并添加逐项来源"
             )
             article = store.read(article_id)
+            history(article, store.folder(article_id))
             config_version = archive_configuration(store.folder(article_id))
             draft = RewritingAgent().run(
                 article,
@@ -138,15 +150,17 @@ def run(article_id, options, review_only=False):
             )
             article.update(draft)
             ensure_media(article)
+            ensure_posters(article, store.folder(article_id))
+            prepare(article)
             article["config_version"] = config_version
             article["revision"] += 1
-            article["review"] = None
             store.save(article, snapshot=True)
         store.event(
             article_id, "独立审稿", "审稿 Agent 检查技术事实、排版、原创性与平台风险"
         )
         article = store.read(article_id)
         article["review"] = ReviewAgent().run(article, options)
+        article.setdefault("review_history", []).append(article["review"])
         article["status"] = "Done"
         article["stage"] = (
             "待人工确认"

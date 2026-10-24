@@ -14,6 +14,7 @@ from ..dependencies import auth, get_article
 from ..manual_materials import sync, upload
 from ..research import extract, download_assets
 from ..tasks import launch
+from ..revisions import history
 
 router = APIRouter(dependencies=[Depends(auth)])
 
@@ -78,7 +79,6 @@ def add_reference(article_id: str, payload: Reference):
         source["reference_role"] = dict(kind="manual", reason="用户补充链接")
         article["sources"].append(source)
         article["assets"] += download_assets(source, article_id, index)
-        article["review"] = None
         result.append(store.save(article))
 
     try:
@@ -121,6 +121,7 @@ def fuse(article_id: str, payload: Fusion):
         except (ValueError, httpx.HTTPError, KeyError) as exc:
             message = str(exc) if isinstance(exc, ValueError) and str(exc).startswith("融合段落缺少") else "融合模型调用失败，原稿未修改；请检查网络、模型配置或重试"
             raise HTTPException(502, message) from exc
+        history(article, store.folder(article_id))
         article["body"] = (
             article["body"][: payload.position]
             + "\n\n"
@@ -129,8 +130,7 @@ def fuse(article_id: str, payload: Fusion):
             + article["body"][payload.position :]
         )
         article["revision"] += 1
-        article["review"] = None
-        article["stage"] = "参考融合插入，待复审"
+        article["stage"] = "修改已保存"
         result.append(store.save(article, snapshot=True))
 
     launch(article_id, operation)

@@ -8,6 +8,9 @@ import markdown
 from PIL import Image, ImageDraw, ImageFont
 
 from . import store
+from .draft_presentation import clean_body
+from .platform_keywords import format_keywords
+from .video_posters import attach_posters
 
 TAGS = [
     "p",
@@ -50,7 +53,7 @@ STYLES = {
 
 def html(body):
     safe = bleach.clean(
-        markdown.markdown(body, extensions=["tables", "fenced_code"]),
+        markdown.markdown(clean_body(body), extensions=["tables", "fenced_code"]),
         tags=TAGS,
         attributes={
             "a": ["href", "title"],
@@ -86,7 +89,7 @@ def document(article):
         + '</title><body style="max-width:720px;margin:40px auto;padding:24px;font-family:system-ui,sans-serif;background:#fafcfb"><h1>'
         + bleach.clean(article["title"], tags=[], strip=True)
         + "</h1>"
-        + html(article["body"])
+        + attach_posters(html(article["body"]), article)
         + "</body></html>"
     )
 
@@ -126,12 +129,12 @@ def cards(article):
 
 def export_zip(article, platform):
     stream = io.BytesIO()
-    body = article["body"]
+    body = clean_body(article["body"])
     if platform in ("xiaohongshu", "weibo", "x"):
         text = article["title"] + "\n\n" + re.sub(r"!\[[^]]*\]\([^)]*\)", "", body)
         text = re.sub(r"\[([^]]+)\]\(([^)]+)\)", r"\1 (\2)", text)
         text = re.sub(r"[*`#]", "", text)
-        text += "\n\n" + " ".join("#" + k for k in article["keywords"])
+        text += "\n\n" + format_keywords(article["keywords"], platform)
     else:
         text = body
     with zipfile.ZipFile(stream, "w", zipfile.ZIP_DEFLATED) as archive:
@@ -156,6 +159,11 @@ def export_zip(article, platform):
                 )
                 if asset:
                     image["src"] = "assets/" + asset["id"] + Path(asset["path"]).suffix
+                    poster = next((a for a in article["assets"] if a["id"] == asset.get("poster_asset_id") and a.get("approved")), None)
+                    if poster:
+                        image["poster"] = "assets/" + poster["id"] + Path(poster["path"]).suffix
+                    elif image.has_attr("poster"):
+                        del image["poster"]
                 else:
                     image.decompose()
         archive.writestr("preview.html", str(soup))

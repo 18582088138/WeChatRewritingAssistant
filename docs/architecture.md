@@ -59,6 +59,12 @@ conda run --no-capture-output -n xkd_env_py312 python scripts/launch.py
 
 data/articles/原文标题/ 保存稳定 UUID 元数据 article.json；同名任务追加短 ID。source/原文标题/ 与 references/参考标题/ 分别保存标题 Markdown、text 原始 HTML/PDF 和元数据、images、videos。原文 Markdown 第一行是原文链接。manual/images、videos、texts 接收 GUI 与文件夹添加的素材。drafts 保存当前和修订标题稿，versions 保存阶段快照，generated 保存组图、信息图和模型尝试稿，config-history 保存配置版本。
 
+本轮增加 branches/vNNNN.json 作为用户编号版本，branches/media 保存不可变媒体副本。revision 与 version_number 独立；revisions.py 负责累计 >30% 的新版本规则与变动范围。draft_presentation.py 清理人工稿并保留 agent_evidence；review_state.py 判断上次审稿是否仍匹配当前文案。局部重写拆成提案生成与确认两个接口。
+
+data/public-materials/library.json、manual 和 references 是独立公共素材库；public_materials.py 负责共享资料与选择复制。research_x.py 负责 X 长帖/媒体提取及真实渠道诊断。video_posters.py 在 FFmpeg 可用时提取视频封面帧；document_text.py 提取有大小限制的 DOCX 正文。
+
+两个 Agent 的详细输入输出、控制流程、Prompt 与代码修改入口见 [agents-design.md](agents-design.md)。
+
 首次启动迁移旧 UUID 目录，迁移前备份到 data/backups/title-migration。保留旧 materials 文件供历史快照路径使用。数据读取始终使用 UUID，不通过文章标题作 API 身份；修改生成标题不移动归档目录。
 
 自动检索候选由 research_related 发现，research_temporal 按正文实体和 ±3 天日期筛选，原始论文/科普标为 background。人工补充不绕成自动审核资料，标为 manual。模型看到带编号的研究上下文，内部配图与导出授权分别管理；生成卡片记录所用素材并继承确认状态。

@@ -48,7 +48,7 @@ setInterval(async () => {
         tab = state.tab;
       await refresh(false);
       if (state.current?.id === currentId) state.tab = tab;
-      if (!$('#import-dialog').open && !$('#asset-dialog').open) render();
+      if (!document.querySelector('dialog[open]')) render();
     }
   } finally {
     pollBusy = false;

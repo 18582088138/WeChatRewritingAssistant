@@ -11,8 +11,8 @@ from .archive import safe_name
 from .research_download import video_format
 
 
-def sync(article):
-    root = store.folder(article["id"])
+def sync(article, root=None, persist=True):
+    root = root or store.folder(article["id"])
     signatures = article.setdefault("manual_files", {})
     changed = False
     for path in sorted((root / "manual").rglob("*"))[:150]:
@@ -35,8 +35,11 @@ def sync(article):
             elif suffix in {".mp4", ".mov", ".webm"}:
                 video_format(raw)
                 asset = dict(type="video")
-            elif suffix in {".md", ".txt", ".pdf", ".html"}:
-                if suffix == ".pdf":
+            elif suffix in {".md", ".txt", ".pdf", ".html", ".docx"}:
+                if suffix == ".docx":
+                    from .document_text import docx_text
+                    text = docx_text(raw)
+                elif suffix == ".pdf":
                     import pymupdf
 
                     with pymupdf.open(path) as document:
@@ -99,13 +102,14 @@ def sync(article):
             changed = True
         except Exception as exc:
             article.setdefault("material_warnings", {})[relative] = str(exc)[:180]
-    if changed:
-        article["review"] = None
-        store.save(article)
+    from .video_posters import ensure_posters
+    changed = ensure_posters(article, root) or changed
+    if changed and persist:
+        store.save(article, snapshot=bool(article.get("body")))
     return article
 
 
-def upload(article_id, filename, raw):
+def upload(article_id, filename, raw, root=None, article=None):
     suffix = Path(filename).suffix.lower()
     category = (
         "images"
@@ -127,9 +131,11 @@ def upload(article_id, filename, raw):
         ".txt",
         ".html",
         ".pdf",
+        ".docx",
     }:
         raise ValueError("不支持的素材格式")
-    root = store.folder(article_id)
+    public = root is not None
+    root = root or store.folder(article_id)
     name = safe_name(Path(filename).stem) + suffix
     path = root / "manual" / category / name
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -138,4 +144,4 @@ def upload(article_id, filename, raw):
             path.stem + "-" + hashlib.sha256(raw).hexdigest()[:8] + suffix
         )
     path.write_bytes(raw)
-    return sync(store.read(article_id))
+    return sync(article or store.read(article_id), root, persist=not public)

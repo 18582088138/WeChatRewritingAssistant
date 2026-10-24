@@ -7,6 +7,8 @@ from pydantic import BaseModel, Field
 from .research_context import source_context as source_context
 from .configuration import settings, prompt, writer_prompt
 from .generation_attempts import save_attempt
+from .draft_presentation import prose_length, evidence_body
+from .review_state import fingerprint
 
 
 class Draft(BaseModel):
@@ -115,16 +117,6 @@ class RewritingAgent:
         draft = Draft.model_validate(result).model_dump()
 
         # Count prose without the bibliography, link destinations, and Markdown syntax.
-        def prose_length(body):
-            body = re.split(
-                r"\n#{1,3}\s*(?:(?:信息|资料|事实|内容)?来源|参考|References)",
-                body,
-                maxsplit=1,
-            )[0]
-            body = re.sub(r"!\[[^]]*\]\([^)]*\)", "", body)
-            body = re.sub(r"\[([^]]+)\]\([^)]*\)", r"\1", body)
-            return len(re.sub(r"\[S\d+\]|[\s#*`>-]", "", body))
-
         for _ in range(settings("generation")["compression_retries"]):
             measured = prose_length(draft["body"])
             if measured <= options["word_count"] * min(1.35, settings("generation")["length_tolerance"]):
@@ -174,6 +166,7 @@ class ReviewAgent:
                 _agent="review",
                 title=article["title"],
                 body=article["body"],
+                internal_evidence=evidence_body(article),
                 sources=source_context(article),
                 assets=article["assets"],
                 platform=options["platform"],
@@ -181,15 +174,16 @@ class ReviewAgent:
             options["provider"],
         )
         review = Review.model_validate(result).model_dump()
-        citations = set(re.findall(r"\[S(\d+)\]", article["body"]))
+        citations = set(re.findall(r"\[S(\d+)\]", evidence_body(article)))
         missing = [c for c in citations if not 1 <= int(c) <= len(article["sources"])]
-        if not citations or missing:
+        verified_checks = [f for f in review["fact_checks"] if str(f.get("source_id", "")).removeprefix("S").isdigit() and 1 <= int(str(f["source_id"]).removeprefix("S")) <= len(article["sources"])]
+        if missing or not article["sources"] or (not citations and not verified_checks):
             review["issues"].append(
                 dict(
                     category="来源",
                     severity="high",
-                    detail="正文缺少可核对的来源编号，或编号超出来源范围",
-                    suggestion="补齐逐项来源并删除无证据结论",
+                    detail="未提供有效来源核对记录，或证据编号超出来源范围",
+                    suggestion="根据参考资料核对具体事实，删除无证据结论；正文不必显示来源编号",
                 )
             )
             review["score"] = min(review["score"], 59)
@@ -211,4 +205,5 @@ class ReviewAgent:
             review["score"] = min(review["score"], 59)
         review["checked_at"] = __import__("backend.store", fromlist=["now"]).now()
         review["draft_revision"] = article["revision"]
+        review["fingerprint"] = fingerprint(article)
         return review

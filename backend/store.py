@@ -6,6 +6,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .archive import locate, title_folder, safe_name
+from .draft_presentation import prepare
+from .revisions import initialize, snapshot as save_branch
+from .review_state import current
+from .draft_presentation import prose_length
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = Path(os.getenv("DATA_DIR", ROOT / "data")).resolve()
@@ -28,16 +32,27 @@ def folder(article_id):
 
 def read(article_id):
     with LOCK:
-        return json.loads(
+        article = json.loads(
             (folder(article_id) / "article.json").read_text(encoding="utf-8")
         )
+        prepare(article)
+        initialize(article)
+        article["review_current"] = current(article)
+        article["prose_chars"] = prose_length(article["body"])
+        return article
 
 
 def save(article, snapshot=False):
     with LOCK:
+        prepare(article)
+        initialize(article)
+        article["review_current"] = current(article)
+        article["prose_chars"] = prose_length(article["body"])
         target = title_folder(DATA, folder(article["id"]), article)
         target.mkdir(parents=True, exist_ok=True)
         article["updated_at"] = now()
+        if snapshot:
+            save_branch(article, target)
         temporary = target / "article.tmp"
         temporary.write_text(
             json.dumps(article, ensure_ascii=False, indent=2), encoding="utf-8"
@@ -94,7 +109,12 @@ def listing():
     result = []
     for file in root.glob("*/article.json"):
         try:
-            result.append(json.loads(file.read_text(encoding="utf-8")))
+            article = json.loads(file.read_text(encoding="utf-8"))
+            prepare(article)
+            initialize(article)
+            article["review_current"] = current(article)
+            article["prose_chars"] = prose_length(article["body"])
+            result.append(article)
         except (OSError, ValueError):
             continue
     return sorted(result, key=lambda a: a["updated_at"], reverse=True)

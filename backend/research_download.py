@@ -48,9 +48,10 @@ def raster_image(raw):
     return raw
 
 
-def download_assets(source, article_id, source_number):
+def download_assets(source, article_id, source_number, article_root=None):
     result, reports, hashes = [], [], set()
-    root = store.folder(article_id) / source.get(
+    base = article_root or store.folder(article_id)
+    root = base / source.get(
         "storage_dir", f"materials/source-{source_number}"
     )
     cfg = settings("research")
@@ -120,7 +121,7 @@ def download_assets(source, article_id, source_number):
                 dict(
                     id=f"s{source_number}-image-{index}",
                     type="image",
-                    path=path.relative_to(store.folder(article_id)).as_posix(),
+                    path=path.relative_to(base).as_posix(),
                     source_url=final,
                     attribution=source["url"],
                     alt=item.get("alt", ""),
@@ -161,7 +162,7 @@ def download_assets(source, article_id, source_number):
                     id=f"s{source_number}-video-{index}",
                     alt=source.get("title", "参考资料") + f" · 视频 {index + 1}",
                     type="video",
-                    path=path.relative_to(store.folder(article_id)).as_posix(),
+                    path=path.relative_to(base).as_posix(),
                     source_url=final,
                     attribution=source["url"],
                     approved=False,
@@ -175,6 +176,7 @@ def download_assets(source, article_id, source_number):
             report.update(status="saved", bytes=len(raw), format=suffix)
         except Exception as exc:
             report.update(status="failed", reason=failure_reason(exc))
+            source.setdefault("embedded_media", []).append(dict(url=url, type="download_failed", reason=report["reason"]))
         reports.append(report)
     source["media_downloads"] = reports
     source["quality"]["saved_images"] = sum(a["type"] == "image" for a in result)

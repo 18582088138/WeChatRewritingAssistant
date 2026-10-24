@@ -2,6 +2,7 @@ import { $, toast } from '../../core/dom.js';
 import { api } from '../../core/api.js';
 import { state } from '../../core/state.js';
 import { runtime } from '../../core/runtime.js';
+import { showRewriteProposal } from './rewrite-proposal.js';
 
 export function editorPayload() {
   return {
@@ -16,17 +17,18 @@ export function editorPayload() {
   };
 }
 
-export async function saveDraft(silent = false) {
-  if (!state.dirty) return true;
+export async function saveDraft(silent = false, newVersion = false) {
+  if (!state.dirty && !newVersion) return true;
   try {
     state.current = await api('/api/articles/' + state.current.id, {
       method: 'PATCH',
-      body: JSON.stringify(editorPayload()),
+      body: JSON.stringify({...editorPayload(), new_version:newVersion}),
     });
     state.dirty = false;
     if (!silent) {
+      state.editing = false;
       runtime.renderEditor();
-      toast('修改已保存，审稿结果已重置');
+      toast(newVersion ? '已另存为新版本' : '修改已保存');
     }
     return true;
   } catch (err) {
@@ -91,18 +93,20 @@ export async function rewriteSelection() {
     end = [...area.value.slice(0, selected.end)].length;
   const instruction = $('#rewrite-instruction').value,
     provider = options().provider;
+  const selectedBody=area.value;
   if (!(await saveDraft(true))) return;
+  if(selectedBody!==state.current.body){area.value=state.current.body;state.selection=null;toast('正文已规范化保存，请重新选择要重写的段落');return;}
   const b = $('#rewrite-selection');
   b.disabled = true;
   b.textContent = '正在重写';
   try {
-    state.current = await api(`/api/articles/${state.current.id}/paragraph`, {
+    const proposal = await api(`/api/articles/${state.current.id}/paragraph`, {
       method: 'POST',
       body: JSON.stringify({ start, end, instruction, provider, revision: state.current.revision }),
     });
     state.selection = null;
-    runtime.renderEditor();
-    toast('选中段落已重写并保存，其余正文已保留');
+    b.disabled=false;b.textContent='重写选中段落';
+    showRewriteProposal(proposal);
   } catch (err) {
     toast(err.message);
     b.disabled = false;

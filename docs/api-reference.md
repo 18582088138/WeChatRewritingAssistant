@@ -26,11 +26,19 @@ review 包含 score、verdict、issues（category/severity/detail/suggestion）�
 | GET /api/articles | 无 | 按更新时间排序的 article 数组 |
 | POST /api/articles | url，可选 title/text | 创建文章，201；无 text 时启动抓取 |
 | GET /api/articles/{id} | 无 | 详情，非 Process 时同步手工材料 |
-| PATCH /api/articles/{id} | title/body/summary/keywords/revision | 保存新修订，清空审稿 |
+| PATCH /api/articles/{id} | title/body/summary/keywords/revision/new_version | 保存内容；必要时新增编号版本，保留审稿 |
 | GET /api/articles/{id}/versions | 无 | 最新至多 30 个快照，附 version_id |
 | POST /api/articles/{id}/generate | Options | Process 文章，202 |
-| POST /api/articles/{id}/review | Options | Process 文章，202；只审稿 |
-| POST /api/articles/{id}/paragraph | start/end/revision/instruction/provider | 替换选中正文后 article |
+| POST /api/articles/{id}/review | Options | 202；稿件未变则返回已保存记录，否则启动审稿 |
+| POST /api/articles/{id}/paragraph | start/end/revision/instruction/provider | proposal_id/revision/start/end/before/text；不修改正文 |
+| POST /api/articles/{id}/paragraph/apply | proposal_id/revision/text | 接受可编辑提案后的 article |
+| GET /api/articles/{id}/versions/{version_id}/preview | 无 | 历史全文 HTML，含图片/视频 |
+| GET /api/articles/{id}/versions/{version_id}/assets/{asset_id}/file | 无 | 历史媒体副本 |
+| GET /api/materials/public | 无 | 公共资料库，读取时同步手动文件 |
+| POST /api/materials/public | multipart file | 上传公共文档/图片/视频 |
+| POST /api/materials/public/references | url | 抓取网页与媒体到公共库 |
+| GET /api/materials/public/assets/{asset_id}/file | 无 | 公共媒体文件 |
+| POST /api/articles/{id}/materials/public | source_index 或 asset_id | article，以及选中来源 source_id / 复制媒体 asset |
 | POST /api/articles/{id}/references | url | 抓取用户补充来源与素材，返回 article |
 | POST /api/articles/{id}/materials | file | 导入文本/图片/视频，返回 article |
 | POST /api/articles/{id}/materials/sync | 无 | 同步 manual 文件夹，返回 article |
@@ -79,7 +87,7 @@ word_count 为 300–6000，related_urls 至多 4 项。revise=true 将当前审
 {"title":"模型发布解读","body":"正文 [S1]","summary":"一句话总结","keywords":["AI"],"revision":2}
 ```
 
-选区重写以零起始 Unicode 码点范围 [start,end) 替换：
+选区重写以零起始 Unicode 码点范围 [start,end) 生成提案：
 
 ```json
 {"start":12,"end":120,"revision":3,"instruction":"压缩句子，保留测试条件","provider":"deepseek"}
@@ -97,7 +105,21 @@ word_count 为 300–6000，related_urls 至多 4 项。revise=true 将当前审
 }
 ```
 
-source_id 从 1 起，最多 12 个选区。模型输出需 text 字段并含实际选中来源的 [S编号]，不能引用未选中来源。失败不修改正文；成功增加 revision 并清空审稿。前端 UTF-16 位置需先转换码点，emoji 按一个码点处理。
+source_id 从 1 起，最多 12 个选区。模型输出需 text 字段并含实际选中来源的 [S编号]，不能引用未选中来源。失败不修改正文；成功增加 revision，人工正文移除来源编号，保留上一次审稿但标记为非当前。前端 UTF-16 位置需先转换码点，emoji 按一个码点处理。
+
+## 本轮编辑与版本契约
+
+article.body 为清洁的人工稿；agent_evidence 为内部核对稿及其正文哈希。prose_chars 不计参考链接、图片/视频 Markdown 与工作注释。review_current 表示已保存审稿是否匹配当前文案和证据；review_history 保存历次审稿。人工/局部修改保留最近一次 review。
+
+revision 是并发计数，version_number 是界面编号。highlights 是当前版本相对基准正文的 Unicode 码点变动范围（start/end/removed）。change_ratio 是累计正文变化比例，超过 0.30 或 new_version=true 新增编号版本。GET /versions 返回编号版本，不返回原始阶段快照。历史媒体按哈希归档，后续替换不影响历史阅览。
+
+提案生成不会改变 article.body 或 revision；返回结果包含 before 和 text。确认时 POST /paragraph/apply，例如：
+
+```json
+{"proposal_id":"32位十六进制ID","revision":2,"text":"人工确认或继续编辑后的新段落"}
+```
+
+提案与文案的 revision 必须匹配，否则 409；提案保留在 generated/proposals。只有确认接口替换选区。公共 source_index 为零起始索引，选中的资料复制到 article.sources 后返回一始 source_id，供 /fuse 使用；重复选择同一内容不会重复添加。公共媒体复制到本篇目录，正文使用本篇 asset 路径。
 
 平台准备请求：
 
@@ -109,7 +131,7 @@ source_id 从 1 起，最多 12 个选区。模型输出需 text 字段并含实
 
 ## 文件与错误
 
-materials 支持 md/txt/pdf/html/png/jpg/jpeg/gif/webp/mp4/mov/webm，上传上限 25 MB。原文抓取图片/视频上限和数量来自 research 配置；超过、播放列表或格式无效的媒体只记录诊断。未确认素材不进入导出 HTML/ZIP。公众号存在未确认正文图片时拒绝投递。
+materials 支持 md/txt/pdf/html/docx/png/jpg/jpeg/gif/webp/mp4/mov/webm，上传上限 25 MB。原文抓取图片/视频上限和数量来自 research 配置；超过、播放列表或格式无效的媒体只记录诊断。未确认素材不进入导出 HTML/ZIP。公众号存在未确认正文图片时拒绝投递。
 
 | 状态码 | 处理方法 |
 | --- | --- |

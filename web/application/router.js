@@ -33,6 +33,7 @@ export async function openArticle(id) {
     state.current = await api('/api/articles/' + id);
     history.replaceState(null, '', '#article/' + id);
     state.tab = 'edit';
+    state.editing = false;
     state.dirty = false;
     closeNavigation();
     renderEditor();

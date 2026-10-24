@@ -60,8 +60,7 @@ async def upload(article_id: str, file: UploadFile = File(...)):
                 height=image.height,
             )
         )
-        article["review"] = None
-        result.append(store.save(article))
+        result.append(store.save(article, snapshot=bool(article.get("body"))))
 
     launch(article_id, operation)
     return result[0]
@@ -84,8 +83,7 @@ def approve(article_id: str, asset_id: str, payload: Approval):
         for derived in article["assets"]:
             if derived.get("derived_from") == asset_id:
                 derived.update(approved=payload.approved, watermark="manually_checked" if payload.approved else "unchecked")
-        article["review"] = None
-        result.append(store.save(article))
+        result.append(store.save(article, snapshot=bool(article.get("body"))))
 
     launch(article_id, operation)
     return result[0]

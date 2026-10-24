@@ -59,9 +59,11 @@ def test_paragraph_edit_conflict_and_review_reset(client, monkeypatch):
     url = f'/api/articles/{a["id"]}/paragraph'
     response = client.post(url, json={'start': start, 'end': end, 'revision': 0})
     assert response.status_code == 200
-    updated = response.json()
-    assert updated['body'] == '开头😀。更自然的段落。[S1]后面的正文。'
-    assert updated['review'] is None
+    proposal = response.json()
+    assert client.get(f'/api/articles/{a["id"]}').json()['body'] == a['body']
+    updated = client.post(url + '/apply', json=dict(proposal_id=proposal['proposal_id'], revision=0, text=proposal['text'])).json()
+    assert updated['body'] == '开头😀。更自然的段落。后面的正文。'
+    assert updated['review']['score'] == 90 and not updated['review_current']
     assert client.post(url, json={'start': start, 'end': end, 'revision': 0}).status_code == 409
     assert client.patch(f'/api/articles/{a["id"]}', json=dict(title='过期', body='xx', summary='', keywords=[], revision=0)).status_code == 409
 

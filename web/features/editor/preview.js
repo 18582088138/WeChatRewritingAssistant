@@ -15,7 +15,7 @@ export async function openPreview() {
     const blob = await api(`/api/articles/${state.current.id}/preview`);
     const text = await blob.text();
     const doc = new DOMParser().parseFromString(text, 'text/html');
-    for (const img of $$('img', doc)) {
+    for (const img of $$('img,video', doc)) {
       const match = img
         .getAttribute('src')
         ?.match(/^\/api\/articles\/([a-f0-9]{32})\/assets\/([^/]+)\/file$/);
@@ -23,6 +23,8 @@ export async function openPreview() {
         const b = await api(`/api/articles/${match[1]}/assets/${match[2]}/file`);
         img.src = await blobDataUrl(b);
       }
+      const poster=img.getAttribute('poster');
+      if(poster?.startsWith('/api/articles/'))img.poster=await blobDataUrl(await api(poster));
     }
     w.document.open();
     w.document.write('<!doctype html>' + doc.documentElement.outerHTML);
@@ -33,19 +35,18 @@ export async function openPreview() {
   }
 }
 
-export function showVersion(v) {
+export async function showVersion(v) {
   const w = window.open('about:blank', '_blank');
   if (!w) return;
-  w.document.open();
-  w.document.write(
-    `<!doctype html>
-      <meta charset="utf-8">
-      <title>${escape(v.title)}</title>
-      <body style="max-width:760px;margin:40px auto;padding:25px;font-family:system-ui">
-      <h1>${escape(v.title)}</h1>
-      <p>历史版本 · ${date(v.updated_at, true)} · 修订 ${v.revision}</p>
-      <pre style="white-space:pre-wrap;line-height:1.9">${escape(v.body)}</pre>
-      </body>`,
-  );
-  w.document.close();
+  try {
+    const blob=await api(`/api/articles/${v.id}/versions/${v.version_id}/preview`);
+    const doc=new DOMParser().parseFromString(await blob.text(),'text/html');
+    await Promise.all($$('img,video',doc).map(async el=>{
+      const src=el.getAttribute('src');
+      if(src?.startsWith(`/api/articles/${v.id}/versions/${v.version_id}/assets/`))el.src=await blobDataUrl(await api(src));
+      const poster=el.getAttribute('poster');
+      if(poster?.startsWith(`/api/articles/${v.id}/versions/${v.version_id}/assets/`))el.poster=await blobDataUrl(await api(poster));
+    }));
+    w.document.open();w.document.write('<!doctype html>'+doc.documentElement.outerHTML);w.document.close();
+  }catch(err){w.close();toast(err.message);}
 }

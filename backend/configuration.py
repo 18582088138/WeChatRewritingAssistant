@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BOUNDS = {
     "port": (1, 65535), "window_days": (0, 30), "max_sources": (1, 20),
     "max_candidates": (1, 40), "context_chars": (1000, 100000),
+    "target_sources": (3, 5), "minimum_sources": (1, 5),
     "image_limit": (1, 30), "video_limit": (0, 10),
     "image_bytes": (1000, 25000000), "video_bytes": (1000, 100000000),
     "download_retries": (0, 3), "word_count": (300, 6000),

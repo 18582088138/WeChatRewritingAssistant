@@ -5,6 +5,7 @@ import { saveDraft } from './draft.js';
 import { assetTile, bindAssets } from '../../components/assets.js';
 import { state } from '../../core/state.js';
 import { runtime } from '../../core/runtime.js';
+import { loadPublic, mediaFor, attachPublic } from './reference-library.js';
 
 export async function makeCards() {
   if (!(await saveDraft(true))) return;
@@ -38,18 +39,20 @@ export async function uploadAsset(e) {
   }
 }
 
-export function openAssetPicker() {
+export async function openAssetPicker() {
   const area = $('#draft-body');
   state.imageSelection = state.selection || { start: area.selectionStart, end: area.selectionEnd };
-  const approved = state.current.assets.filter((a) => a.type === 'image');
+  try{await loadPublic();}catch(err){toast(err.message);}
+  const approved = mediaFor(state.current).filter((a) => a.type === 'image');
   $('#asset-picker').innerHTML = approved.length
-    ? approved.map((a) => assetTile(state.current, a, true)).join('')
+    ? approved.map((a) => `<article class="asset-tile"><img data-asset="${a.libraryArticle}/${a.id}" alt="${a.alt.replace(/[<>"&]/g,'')}"><p>${a.libraryArticle==='public'?'公共':'本篇'}素材</p><button class="button secondary small" data-pick="${a.id}" data-library="${a.libraryArticle}">选择图片</button></article>`).join('')
     : '<p class="hint">暂无图片，请到“来源与素材”上传本地图片。</p>';
   bindAssets($('#asset-picker'));
   $$('[data-pick]').forEach(
     (b) =>
-      (b.onclick = () => {
-        const asset = state.current.assets.find((a) => a.id === b.dataset.pick);
+      (b.onclick = async () => {
+        let asset = approved.find((a) => a.id === b.dataset.pick&&a.libraryArticle===b.dataset.library);
+        try{if(asset.libraryArticle==='public')asset=(await attachPublic({asset_id:asset.id})).asset;}catch(err){toast(err.message);return;}
         const { start, end } = state.imageSelection;
         const value = area.value;
         const caption = asset.alt.replace(/[\[\]\n]/g, '');

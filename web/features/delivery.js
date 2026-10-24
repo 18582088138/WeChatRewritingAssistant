@@ -4,8 +4,13 @@ import { download } from '../core/media.js';
 import { saveDraft, options } from './editor/draft.js';
 import { state, platformNames } from '../core/state.js';
 import { runtime } from '../core/runtime.js';
+import { formatKeywords } from '../core/keywords.js';
 
 export function bindDelivery() {
+  const format=()=>{$('#formatted-keywords').value=formatKeywords($('#draft-keywords').value.split(/[,，]/).map(s=>s.trim()).filter(Boolean),$('#keyword-platform').value);};
+  $('#keyword-platform').onchange=format;
+  $('#draft-keywords').oninput=()=>{state.dirty=true;format();};
+  $$('input[name=publish-platform]').forEach(el=>el.addEventListener('change',()=>{$('#keyword-platform').value=el.value;format();}));
   $('#deliver').onclick = async () => {
     if (!(await saveDraft(true))) return;
     const selected = $$('input[name=publish-platform]:checked').map((i) => i.value);
